@@ -4,6 +4,28 @@ let rec fibonnaci (n :  int) :  int =
   else (fibonnaci (n - 1)) + (fibonnaci (n - 2));;
 
 (* Subsitution based evaluation of (fibonnaci 3) *)
+(* (fibonnaci 3)
+=> (if 3<=1 then 3 else (fibonnaci (3 - 1)) + (fibonnaci (3 - 2)))
+=> (fibonnaci (3-1)) + (fibonnaci (3 - 2))
+=> (fibonnaci 2) + (fibonnaci (3 - 2))
+=> (if 2<=1 then 2 else (fibonnaci (2 - 1)) + (fibonnaci (2 - 2))) + 
+      (fibonnaci (3 - 2))
+=> (fibonnaci (2 - 1)) + (fibonnaci (2 - 2)) + 
+      (fibonnaci (3 - 2))
+=> (fibonnaci 1) + (fibonnaci (2 - 2)) + 
+      (fibonnaci (3 - 2))
+=> (if 1 <= 1 then 1 else (fibonnaci (1 - 1)) + (fibonnaci (1 - 2))) +
+      (fibonnaci (2 - 2)) + (fibonnaci (3 - 2))
+=> 1 + (fibonnaci (2 - 2)) + (fibonnaci (3 - 2))
+=> 1 + (fibonnaci 0) + (fibonnaci (3 - 2))
+=> 1 + (if 0<=1 then 0 else (fibonnaci (0 - 1)) (fibonnaci (0 - 2)) + 
+         (fibonnaci (3 - 2))
+=> 1 + 0 + (fibonnaci (3 - 2))
+=> 1 + 0 + (fibonnaci 1)
+=> 1 + 0 + (if 1<=1 then 1 else (fibonnaci (1 - 1)) + (fibonnaci (1 - 2)))
+=> 1 + 0 + 1
+=> 2
+ *)
 
 (* Type definition of Binary tree *)
 type btnode =
@@ -18,8 +40,44 @@ let rec inorder_str (bt : btnode) : string =
      (inorder_str left) ^ s ^ (inorder_str right);;
 
 (* Substitution based evaluation of 
-(inorder_str Node("a", Node("b", Leaf, Leaf), Node("c", Leaf, Leaf))) *)
+   (inorder_str Node("a", Node("b", Leaf, Leaf), Node("c", Leaf, Leaf))) *)
 
+(* (inorder_str Node("a", Node("b", Leaf, Leaf), Node("c", Leaf, Leaf)))
+=> ( match Node("a", Node("b", Leaf, Leaf), Node("c", Leaf, Leaf)) with
+       | Leaf -> ""
+       | Node(s, left, right) =>
+          (inorder_str left) ^ s ^ (inorder_str right))
+=> (inorder_str left) ^ s ^ (inorder_str right)
+=> (inorder_str Node("b", Leaf, Leaf)) ^ s ^ (inorder_str right)
+=> ( match Node("b", Leaf, Leaf) with 
+      | Leaf -> ""
+      | Node(s, left, right) => 
+          (inorder_str left) ^ s ^ (inorder_str right) ) 
+   ^ s ^ (inorder_str right) 
+=> ((inorder_str left) ^ s ^ (inorder_str right))   
+   ^ s ^ (inorder_str right)
+=> ((inorder_str Leaf) ^ s ^ (inorder_str Leaf))
+   ^ s ^ (inorder_str right)
+=> ...
+=> ("" ^ "b" ^ "") ^ s ^ (inorder_str right)
+=> "b" ^ s ^ (inorder_str right)
+=> "b" ^ "a" ^ (inorder_str right)
+=> "b" ^ "a" ^ (inorder_str Node("c", Leaf, Leaf))
+=> "b" ^ "a" ^ ( match Node("c", Leaf, Leaf) with
+                   | Leaf => ""
+                   | Node(s, left, right) =>
+                       (inorder_str left) ^ s ^ (inorder_str right))
+=> "b" ^ "a" ^ ((inorder_str left) ^ s ^ (inorder_str right))
+=> "b" ^ "a" ^ ((inorder_str Leaf) ^ s ^ (inorder_str right))
+=> ...
+=> "b" ^ "a" ^ ("" ^ s ^ (inorder_str right))
+=> "b" ^ "a" ^ ("" ^ "c" ^ (inorder_str right))
+=> "b" ^ "a" ^ ("" ^ "c" ^ (inorder_str Leaf))
+=> ...   
+=> "b" ^ "a" ^ ("" ^ "c" ^ "")
+=> "b" ^ "a" ^ "c"
+=> "bac"
+*)
 (* Returns number of nodes in the given binary tree *)
 let rec size (bt : btnode) : int =
   match bt with
