@@ -1,4 +1,5 @@
 open List
+open Printf
    
 (*
 
@@ -114,7 +115,7 @@ let rec evaluate (a : arith) (vars : env) : int =
   Further, if there is a multiplication of a variable, it should be
   pretty-printed by putting the coefficient adjacent, for example:
 
-    pretty (Plus(Plus(Times(Plus(Num(5), Variable("y")), Variable("x")), Num(2)), Num(1)))
+    pretty (Plus(Plus(Times(Plus(Num(5), Variable("y")), Variable("x")), Num(2)), Num(1)))c i
   
   should pretty-print as
 
@@ -130,8 +131,50 @@ let rec evaluate (a : arith) (vars : env) : int =
   should work nicely.  There are several reasonable answers here.
 *)
 
-let rec pretty (a : arith) : string =
-  ""
+let rec pretty_helper (a : arith) (is_times_expr : bool) : string =
+  match a with
+  | Num n -> string_of_int n
+  | Variable y -> y
+  | Plus (left, right) ->
+     let pretty_plus = (pretty_helper left false) ^ " + " ^
+                         (pretty_helper right false) in
+      if is_times_expr then "(" ^ pretty_plus ^ ")" else pretty_plus
+  | Times (left, right) ->
+     let has_variable = match left with
+       | Variable v1 -> true
+       | _ -> match right with
+              | Variable v2 -> true
+              | _ -> false
+     in
+     let pretty_left = (pretty_helper left true) in
+     let pretty_right = (pretty_helper right true) in
+     if not has_variable
+     then pretty_left ^ " * " ^ pretty_right
+     else pretty_left ^ pretty_right                            
+;;
 
 
+let pretty (a : arith) : string =
+  match a with
+  | Num n -> string_of_int n
+  | Variable y -> y
+  | Plus (left, right) ->
+     (pretty_helper left false) ^ " + " ^ (pretty_helper right false)
+  | Times (left, right) ->
+     (pretty_helper left true) ^ " * " ^ (pretty_helper right true);;
 
+let ex1 = (Plus(Plus(Times(Plus(Num(5), Variable("y")), Variable("x")), Num(2)), Num(1)));;
+let ex2 = (Times(Plus(Num(5), Num(6)),
+                 Plus(Num(7), Num(8))));;
+let ex3 = (Plus(Num(5), Plus(Times(Num(6), Num(7)), Num(8))));;
+let ex4 = (Plus(Times(Plus(Num(5), Num(6)), Num(7)), Num(8)));;
+let ex5 = (Times(Variable(x), Variable(y)));;
+let ex6 = (Plus (Variable(x), Variable(y)));;
+let ex1_to_string = (pretty ex1);;
+let ex2_to_string = (pretty ex2);;
+let ex3_to_string = (pretty ex3);;
+let ex4_to_string = (pretty ex4);;
+(printf "expression to string for ex1 %s\n" ex1_to_string);;
+(printf "expression to string for ex2 %s\n" ex2_to_string);;
+(printf "expression to string for ex3 %s\n" ex3_to_string);;
+(printf "expression to string for ex4 %s\n" ex4_to_string);;
