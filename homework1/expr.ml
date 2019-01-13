@@ -1,3 +1,5 @@
+open List
+   
 (*
 
   This is a datatype that describes simple algebra expressions.
@@ -52,15 +54,20 @@ type env = (string * int) list
 
 (* Implement the following three functions.  If needed, you may define them
    recursively, so uncomment out the `rec` keyword. *)
-let (* rec? *) get (env : env) (x : string) : int option =
-  None
+let get (env : env) (x : string) : int option =
+  assoc_opt x env
 ;;
-let (* rec? *) contains (env : env) (x : string) : bool =
-  false
+let contains (env : env) (x : string) : bool =
+  mem_assoc x env
 ;;
-let (* rec? *) add (env : env) (x : string) (xVal : int) : env =
-  []
-;;
+let add (env : env) (x : string) (xVal : int) : env =
+  (* How do we handle duplicates here
+      we can check if we already have the key and then ignore the addition
+      we can update the kvpair
+      we can report an error
+   this depends on how we visualize our environment to be *)
+   env @ [(x, xVal)]
+ ;;
              
 (*
   Next, write evaluate, which takes an arithmetic expression and 
@@ -85,8 +92,18 @@ let (* rec? *) add (env : env) (x : string) (xVal : int) : env =
 *)
 
 let rec evaluate (a : arith) (vars : env) : int =
-  0
-
+  match a with
+  | Plus (left, right) ->
+     (evaluate left vars) + (evaluate right vars)
+  | Times (left, right) ->
+     (evaluate left vars) * (evaluate right vars)
+  | Num n -> n
+  | Variable y ->
+        let pair_option = (get vars y) in
+        match pair_option with
+          | None -> failwith "variable not found"
+          | Some c -> c;;
+            
 (*
   Next, write pretty, which takes an arithmetic expression and renders it in
   mathematical notation.
