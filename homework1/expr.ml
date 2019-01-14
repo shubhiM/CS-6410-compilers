@@ -56,18 +56,17 @@ type env = (string * int) list
 (* Implement the following three functions.  If needed, you may define them
    recursively, so uncomment out the `rec` keyword. *)
 let get (env : env) (x : string) : int option =
+  (* Gets the left most value associated with the binding x *)
   assoc_opt x env
 ;;
 let contains (env : env) (x : string) : bool =
   mem_assoc x env
 ;;
+
 let add (env : env) (x : string) (xVal : int) : env =
-  (* How do we handle duplicates here
-      we can check if we already have the key and then ignore the addition
-      we can update the kvpair
-      we can report an error
-   this depends on how we visualize our environment to be *)
-   env @ [(x, xVal)]
+     (* Handles duplicates by always appending the most recent value
+     for a binding at the leftmost end of the list *)
+     [(x, xVal)] @ env 
  ;;
              
 (*
@@ -115,7 +114,7 @@ let rec evaluate (a : arith) (vars : env) : int =
   Further, if there is a multiplication of a variable, it should be
   pretty-printed by putting the coefficient adjacent, for example:
 
-    pretty (Plus(Plus(Times(Plus(Num(5), Variable("y")), Variable("x")), Num(2)), Num(1)))c i
+    pretty (Plus(Plus(Times(Plus(Num(5), Variable("y")), Variable("x")), Num(2)), Num(1)))
   
   should pretty-print as
 
@@ -155,26 +154,5 @@ let rec pretty_helper (a : arith) (is_times_expr : bool) : string =
 
 
 let pretty (a : arith) : string =
-  match a with
-  | Num n -> string_of_int n
-  | Variable y -> y
-  | Plus (left, right) ->
-     (pretty_helper left false) ^ " + " ^ (pretty_helper right false)
-  | Times (left, right) ->
-     (pretty_helper left true) ^ " * " ^ (pretty_helper right true);;
+  (pretty_helper a false)
 
-let ex1 = (Plus(Plus(Times(Plus(Num(5), Variable("y")), Variable("x")), Num(2)), Num(1)));;
-let ex2 = (Times(Plus(Num(5), Num(6)),
-                 Plus(Num(7), Num(8))));;
-let ex3 = (Plus(Num(5), Plus(Times(Num(6), Num(7)), Num(8))));;
-let ex4 = (Plus(Times(Plus(Num(5), Num(6)), Num(7)), Num(8)));;
-let ex5 = (Times(Variable(x), Variable(y)));;
-let ex6 = (Plus (Variable(x), Variable(y)));;
-let ex1_to_string = (pretty ex1);;
-let ex2_to_string = (pretty ex2);;
-let ex3_to_string = (pretty ex3);;
-let ex4_to_string = (pretty ex4);;
-(printf "expression to string for ex1 %s\n" ex1_to_string);;
-(printf "expression to string for ex2 %s\n" ex2_to_string);;
-(printf "expression to string for ex3 %s\n" ex3_to_string);;
-(printf "expression to string for ex4 %s\n" ex4_to_string);;
