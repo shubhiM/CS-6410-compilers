@@ -53,11 +53,21 @@ let ex3 = (Plus(Num(5), Plus(Times(Num(6), Num(7)), Num(8))));;
 let ex4 = (Plus(Times(Plus(Num(5), Num(6)), Num(7)), Num(8)));;
 let ex5 = (Times(Variable("x"), Variable("y")));;
 let ex6 = (Plus (Variable("x"), Variable("y")));;
+let ex7 = (Variable("x"));;
+let ex8 = (Num(1));;
 
 let evaluate_tests = [
+  (* positive tests *)
   t_int "evaluate1" (evaluate (Times(Num(0), Num(5))) []) 0;
   t_int "evaluate2" (evaluate (Times(Num(1), Num(5))) []) 5;
-  (* More tests here *)
+  t_int "evaluate_ex_1" (evaluate ex1 [("x", 2) ; ("y", 0)]) 13;
+  t_int "evaluate_ex_2" (evaluate ex2 []) 165;
+  t_int "evaluate_ex_3" (evaluate ex3 []) 55;
+  t_int "evaluate_ex_4" (evaluate ex4 []) 85;
+  t_int "evaluate_ex_5" (evaluate ex5 [("x", 2) ; ("y", 10)]) 20;
+  t_int "evaluate_ex_6" (evaluate ex6 [("x", 2) ; ("y", 10)]) 12;
+  t_int "evaluate_ex_8" (evaluate ex8 []) 1;
+  (* negative tests *)
 ];;
 
 (* tests for pretty printing *)
@@ -67,6 +77,8 @@ let ex3_to_string = (pretty ex3);;
 let ex4_to_string = (pretty ex4);;
 let ex5_to_string = (pretty ex5);;
 let ex6_to_string = (pretty ex6);;
+let ex7_to_string = (pretty ex7);;
+let ex8_to_string = (pretty ex8);;
 
 let pretty_tests = [
   t_any "pretty_ex1" ex1_to_string "(5 + y)x + 2 + 1";
@@ -75,6 +87,8 @@ let pretty_tests = [
   t_any "pretty_ex4" ex4_to_string "(5 + 6) * 7 + 8";
   t_any "pretty_ex5" ex5_to_string "xy";
   t_any "pretty_ex6" ex6_to_string "x + y";
+  t_any "pretty_ex7" ex7_to_string "x";
+  t_any "pretty_ex8" ex8_to_string "1";
 ];;
  
 
