@@ -1,6 +1,7 @@
 open Unix
 open Str
 open Printf
+open List
 
 type 'a tok =
   | LPAREN of 'a
@@ -8,6 +9,7 @@ type 'a tok =
   | TSym of string * 'a
   | TInt of int * 'a
   | TBool of bool * 'a
+      
 let tok_info t =
   match t with
   | LPAREN x -> x
@@ -117,13 +119,13 @@ let tokenize (str : string) : pos tok list =
 ;;
 
 
-(* ( a b 1 2 false) *)
-
 type 'a sexp =
   | Sym of string * 'a
   | Int of int * 'a
   | Bool of bool * 'a
   | Nest of 'a sexp list * 'a
+;;
+
 let sexp_info s =
   match s with
   | Sym (_, x) -> x
@@ -132,8 +134,70 @@ let sexp_info s =
   | Nest (_, x) -> x
 ;;
 
+type ('a, 'b) result =
+  | Ok of 'a
+  | Error of 'b
+
+let token_to_sexpr (t : pos tok) : (pos sexp) =
+  match t with
+  | TSym(sym, sp) -> Sym(sym, sp)
+  | TInt(i, ip) -> Int(i, ip)
+  | TBool(b, bp) -> Bool(b, bp)
+  | _ -> failwith "Expecting only bool, symbol or integer token"
+;;
+
+let update_nest_pos (nest : pos sexp) (np : pos) : (pos sexp) =
+  match nest with
+  | Nest (sexprs, p) ->
+     Nest(sexprs , np)
+  | _ -> failwith "Expecting nest sexpression in input";;
+
+
+let update_nest_sexpr (nest : pos sexp) (exp : pos sexp) : (pos sexp) =
+   match nest with
+  | Nest (sexprs, p) ->
+     Nest(sexprs @ [exp] , p)
+  | _ -> failwith "Expecting nest sexpression in input";;
+  
+        
+let rec parse_helper (toks : pos tok list) (sexprs : pos sexp list) (nests : pos sexp list) : (pos sexp list, string) result =
+  match toks with
+  | [] -> Ok sexprs
+  | (t::ts) ->
+     (match t with
+      | LPAREN p ->
+         let new_nest = Nest([], p) in
+         (parse_helper ts sexprs (cons new_nest nests))
+      | RPAREN p ->
+         let num_of_nests = (length nests) in
+         if num_of_nests == 0 then
+           Error "Mis matching right parathensis encountered"
+         else
+           let new_nest = (update_nest_pos (hd nests) p) in
+           if num_of_nests == 1 then (parse_helper ts (sexprs @ [new_nest]) (tl nests))
+           else
+             let rest_of_nests = (tl nests) in
+             let parent_nest = (update_nest_sexpr (hd rest_of_nests) new_nest) in
+             let new_nests = (cons parent_nest (tl rest_of_nests)) in
+             (parse_helper ts sexprs new_nests)
+      | _ ->
+         let t_sexpr = token_to_sexpr t in
+         if (length nests) == 0 then (parse_helper ts (sexprs @ [t_sexpr]) nests)
+         else
+           let curr_nest = (hd nests) in
+           let new_nest = (update_nest_sexpr curr_nest t_sexpr) in
+           (parse_helper ts sexprs (cons new_nest (tl nests))))
+;;
+                     
+         
 let parse_toks (toks : pos tok list) : (pos sexp list, string) result =
+  
+;;
+
+let parse str =
   Error "Not yet implemented"
 ;;
-let parse str = Error "Not yet implemented"
-;;
+
+           
+                                      
+        
