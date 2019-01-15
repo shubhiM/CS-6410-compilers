@@ -9,7 +9,7 @@ type 'a tok =
   | TSym of string * 'a
   | TInt of int * 'a
   | TBool of bool * 'a
-      
+
 let tok_info t =
   match t with
   | LPAREN x -> x
@@ -17,16 +17,15 @@ let tok_info t =
   | TSym (_, x) -> x
   | TInt (_, x) -> x
   | TBool (_, x) -> x
-;;
 
 (* startline, startcol, endline, endcol *)
 type pos = int * int * int * int
+
 let pos_to_string (startline, startcol, endline, endcol) range =
   if range then
-    Printf.sprintf "line %d, col %d--line %d, col %d" startline startcol endline endcol
-  else
-    Printf.sprintf "line %d, col %d" startline startcol
-;;
+    Printf.sprintf "line %d, col %d--line %d, col %d" startline startcol
+      endline endcol
+  else Printf.sprintf "line %d, col %d" startline startcol
 
 (* tokenize parses the program string and converts it into a list of 
    (position , token) tuples where a token is of type tok and position is of 
@@ -91,40 +90,51 @@ let pos_to_string (startline, startcol, endline, endcol) range =
       the output toks from fold_left to preserve the order of tokens in the
       original string. 
  *)
-  
-let tokenize (str : string) : pos tok list =
-  let (toks, _, _) = List.fold_left
-    (fun ((toks : pos tok list), (line : int), (col : int)) (tok : Str.split_result) -> 
-      match tok with
-      | Delim t ->
-         if t = " " then (toks, line, col + 1)
-         else if t = "\t" then (toks, line, col + 1)
-         else if t = "\n" then (toks, line + 1, 0)
-         else if t = "(" then (LPAREN (line, col, line, col + 1) :: toks, line, col + 1)
-         else if t = ")" then (RPAREN (line, col, line, col + 1) :: toks, line, col + 1)
-         else
-           let tLen = String.length t
-           in ((TSym (t, (line, col, line, col + tLen))) :: toks, line, col + tLen)
-      | Text t ->
-         if t = "true" then (TBool (true, (line, col, line, col + 4)) :: toks, line, col + 4)
-         else if t = "false" then (TBool (false, (line, col, line, col + 5)) :: toks, line, col + 5)
-         else
-           let tLen = String.length t
-           in try ((TInt (int_of_string t, (line, col, line, col + tLen))) :: toks, line, col + tLen) with
-              | Failure _ -> (TSym (t, (line, col, line, col + tLen)) :: toks, line, col + tLen)
-    )
-    ([], 0, 0)
-    (full_split (regexp "[()\n\t ]") str) 
-  in List.rev toks
-;;
 
+let tokenize (str : string) : pos tok list =
+  let toks, _, _ =
+    List.fold_left
+      (fun ((toks : pos tok list), (line : int), (col : int))
+           (tok : Str.split_result) ->
+        match tok with
+        | Delim t ->
+            if t = " " then (toks, line, col + 1)
+            else if t = "\t" then (toks, line, col + 1)
+            else if t = "\n" then (toks, line + 1, 0)
+            else if t = "(" then
+              (LPAREN (line, col, line, col + 1) :: toks, line, col + 1)
+            else if t = ")" then
+              (RPAREN (line, col, line, col + 1) :: toks, line, col + 1)
+            else
+              let tLen = String.length t in
+              ( TSym (t, (line, col, line, col + tLen)) :: toks
+              , line
+              , col + tLen )
+        | Text t -> (
+            if t = "true" then
+              (TBool (true, (line, col, line, col + 4)) :: toks, line, col + 4)
+            else if t = "false" then
+              (TBool (false, (line, col, line, col + 5)) :: toks, line, col + 5)
+            else
+              let tLen = String.length t in
+              try
+                ( TInt (int_of_string t, (line, col, line, col + tLen)) :: toks
+                , line
+                , col + tLen )
+              with Failure _ ->
+                ( TSym (t, (line, col, line, col + tLen)) :: toks
+                , line
+                , col + tLen ) ) )
+      ([], 0, 0)
+      (full_split (regexp "[()\n\t ]") str)
+  in
+  List.rev toks
 
 type 'a sexp =
   | Sym of string * 'a
   | Int of int * 'a
   | Bool of bool * 'a
   | Nest of 'a sexp list * 'a
-;;
 
 let sexp_info s =
   match s with
@@ -132,72 +142,75 @@ let sexp_info s =
   | Int (_, x) -> x
   | Bool (_, x) -> x
   | Nest (_, x) -> x
-;;
 
-type ('a, 'b) result =
-  | Ok of 'a
-  | Error of 'b
+type ('a, 'b) result = Ok of 'a | Error of 'b
 
-let token_to_sexpr (t : pos tok) : (pos sexp) =
+let token_to_sexpr (t : pos tok) : pos sexp =
   match t with
-  | TSym(sym, sp) -> Sym(sym, sp)
-  | TInt(i, ip) -> Int(i, ip)
-  | TBool(b, bp) -> Bool(b, bp)
+  | TSym (sym, sp) -> Sym (sym, sp)
+  | TInt (i, ip) -> Int (i, ip)
+  | TBool (b, bp) -> Bool (b, bp)
   | _ -> failwith "Expecting only bool, symbol or integer token"
-;;
 
-let update_nest_pos (nest : pos sexp) (np : pos) : (pos sexp) =
+let update_nest_pos (nest : pos sexp) (np : pos) : pos sexp =
   match nest with
-  | Nest (sexprs, p) ->
-     Nest(sexprs , np)
-  | _ -> failwith "Expecting nest sexpression in input";;
+  | Nest (sexprs, p) -> Nest (sexprs, np)
+  | _ -> failwith "Expecting nest sexpression in input"
 
+let update_nest_sexpr (nest : pos sexp) (exp : pos sexp) : pos sexp =
+  match nest with
+  | Nest (sexprs, p) -> Nest (sexprs @ [exp], p)
+  | _ -> failwith "Expecting nest sexpression in input"
 
-let update_nest_sexpr (nest : pos sexp) (exp : pos sexp) : (pos sexp) =
-   match nest with
-  | Nest (sexprs, p) ->
-     Nest(sexprs @ [exp] , p)
-  | _ -> failwith "Expecting nest sexpression in input";;
-  
-        
-let rec parse_helper (toks : pos tok list) (sexprs : pos sexp list) (nests : pos sexp list) : (pos sexp list, string) result =
+let get_nest_pos (nest : pos sexp) : pos =
+  match nest with
+  | Nest (sexprs, p) -> p
+  | _ -> failwith "Expecting nest sexpression in input"
+
+let rec parse_helper (toks : pos tok list) (sexprs : pos sexp list)
+    (nests : pos sexp list) : (pos sexp list, string) result =
   match toks with
-  | [] -> Ok sexprs
-  | (t::ts) ->
-     (match t with
-      | LPAREN p ->
-         let new_nest = Nest([], p) in
-         (parse_helper ts sexprs (cons new_nest nests))
-      | RPAREN p ->
-         let num_of_nests = (length nests) in
-         if num_of_nests == 0 then
-           Error "Mis matching right parathensis encountered"
-         else
-           let new_nest = (update_nest_pos (hd nests) p) in
-           if num_of_nests == 1 then (parse_helper ts (sexprs @ [new_nest]) (tl nests))
-           else
-             let rest_of_nests = (tl nests) in
-             let parent_nest = (update_nest_sexpr (hd rest_of_nests) new_nest) in
-             let new_nests = (cons parent_nest (tl rest_of_nests)) in
-             (parse_helper ts sexprs new_nests)
-      | _ ->
-         let t_sexpr = token_to_sexpr t in
-         if (length nests) == 0 then (parse_helper ts (sexprs @ [t_sexpr]) nests)
-         else
-           let curr_nest = (hd nests) in
-           let new_nest = (update_nest_sexpr curr_nest t_sexpr) in
-           (parse_helper ts sexprs (cons new_nest (tl nests))))
-;;
-                     
-         
+  | [] ->
+      if length nests == 0 then Ok sexprs
+      else
+        let n = hd nests in
+        let msg1 =
+          "Mismatching left paranthesis found at "
+          ^ pos_to_string (get_nest_pos n) false
+        in
+        Error msg1
+  | t :: ts -> (
+    match t with
+    | LPAREN p ->
+        let new_nest = Nest ([], p) in
+        parse_helper ts sexprs (cons new_nest nests)
+    | RPAREN p ->
+        let num_of_nests = length nests in
+        if num_of_nests == 0 then
+          let msg =
+            "Mismatching right paranthesis found at " ^ pos_to_string p false
+          in
+          Error msg
+        else
+          let new_nest = update_nest_pos (hd nests) p in
+          if num_of_nests == 1 then
+            parse_helper ts (sexprs @ [new_nest]) (tl nests)
+          else
+            let rest_of_nests = tl nests in
+            let parent_nest = update_nest_sexpr (hd rest_of_nests) new_nest in
+            let new_nests = cons parent_nest (tl rest_of_nests) in
+            parse_helper ts sexprs new_nests
+    | _ ->
+        let t_sexpr = token_to_sexpr t in
+        if length nests == 0 then parse_helper ts (sexprs @ [t_sexpr]) nests
+        else
+          let curr_nest = hd nests in
+          let new_nest = update_nest_sexpr curr_nest t_sexpr in
+          parse_helper ts sexprs (cons new_nest (tl nests)) )
+
 let parse_toks (toks : pos tok list) : (pos sexp list, string) result =
-  
-;;
+  parse_helper toks [] []
 
-let parse str =
-  Error "Not yet implemented"
-;;
-
-           
-                                      
-        
+let parse (str : string) : (pos sexp list, string) result =
+  let toks = tokenize str in
+  parse_toks toks
