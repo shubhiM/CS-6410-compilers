@@ -49,25 +49,40 @@ type 'a expr =
  *)
            
 exception SyntaxError of string
+                       
 let rec expr_of_sexp (s : pos sexp) : pos expr =
-  match s with
-  | Sym(s, p) -> Id(s, p)
-  | Int(i, p) -> Number(i, p)
-  | Nest(lsxp, p) ->
-     (match lsxp with
-     | (Sym("add1", pa)::ex::_) ->
-        Prim1(Add1, (expr_of_sexp ex), pa)
-       
-     | (Sym("sub1", ps)::ex::_) ->
-        Prim1(Sub1, (expr_of_sexp ex), ps)
-       
-     (*| (Sym("let", pl)::bindings::body::rest) ->
-        Let( *)
-     | _ ->
-        failwith (sprintf "Converting sexp not yet implemented at pos %s"
-                    (pos_to_string (sexp_info s) true)))
-  | _ ->
-     failwith (sprintf "blah")
+   match s with
+    | Sym(sym, p) -> Id(sym, p)
+    | Int(i, p) -> Number(i, p)
+    | Nest(lsxp, p) ->
+        (match lsxp with
+           | (Sym("add1", pa)::ex::[]) ->
+                Prim1(Add1, (expr_of_sexp ex), pa)
+           | (Sym("sub1", ps)::ex::[]) ->
+                Prim1(Sub1, (expr_of_sexp ex), ps)
+          | (Sym("let", p1)::Nest(b, p2)::body::[]) ->
+              (* Add a check for empty set of bindings here *)
+                Let((expr_of_sexpr_bindings b p1), (expr_of_sexp body), p1)
+           | _ ->
+              raise (SyntaxError (sprintf "Invalid nest sexp at pos %s"
+                                    (pos_to_string (sexp_info s) true)))
+        )
+        
+     |_ ->
+       raise (SyntaxError (sprintf "Invalid sexp at pos %s"
+                             (pos_to_string (sexp_info s) true)))
+and expr_of_sexpr_bindings (b : pos sexp list) (p : pos) : (string * pos expr) list =
+    match b with
+      | [] -> []
+      | (n::ns) ->
+       (match n with
+        | Nest(Sym(s, sp)::ex::[], p2) ->
+           [(s, (expr_of_sexp ex))] @ (expr_of_sexpr_bindings ns p)
+        | _ ->
+           raise (SyntaxError (sprintf "Wrong syntax for let bindings at %s"
+                                 (pos_to_string p true))))   
+
+
 
 (* Functions that implement the compiler *)
 
@@ -79,7 +94,7 @@ let reg_to_asm_string (r : reg) : string =
   match r with
   | EAX -> sprintf "eax"
   | ESP -> sprintf "esp"
-  
+
 let arg_to_asm_string (a : arg) : string =
   match a with
   | Const(n) -> sprintf "%d" n
@@ -97,7 +112,7 @@ let instruction_to_asm_string (i : instruction) : string =
   | IAdd(dest, value) ->
      sprintf "\tadd %s, %s" (arg_to_asm_string dest) (arg_to_asm_string value)
   | _ ->
-     failwith "Other instructions not yet implemented" 
+     failwith "Other instructions not yet implemented"
 
 let to_asm_string (is : instruction list) : string =
   List.fold_left (fun s i -> sprintf "%s\n%s" s (instruction_to_asm_string i)) "" is
@@ -146,7 +161,7 @@ let rec compile_env
          IAdd(Reg(EAX), Const(-1))
        ]
   |_ ->
-     failwith "Other exprs not yet implemented"
+    failwith "Other exprs not yet implemented"
 
 let compile (p : pos expr) : instruction list =
   compile_env p 1 [] (* Start at the first stack slot, with an empty environment *)
