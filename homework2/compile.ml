@@ -47,10 +47,15 @@ type 'a expr =
 (* Function to convert from unknown s-expressions to Adder exprs
    Throws a SyntaxError message if there's a problem
  *)
-           
-exception SyntaxError of string
-                       
+exception SyntaxError of string                  
 let rec expr_of_sexp (s : pos sexp) : pos expr =
+  (* Returns true if there are no duplicate bindings in the let expression *)
+  let rec is_valid? (bs : (string * pos expr) list) : bool =
+    (match bs with
+    | [] -> true
+    | ((v, ex)::rest) ->
+        (not (List.mem_assoc v rest)) && (is_valid? rest))
+   in
    match s with
     | Sym(sym, p) -> Id(sym, p)
     | Int(i, p) -> Number(i, p)
@@ -61,8 +66,12 @@ let rec expr_of_sexp (s : pos sexp) : pos expr =
            | (Sym("sub1", ps)::ex::[]) ->
                 Prim1(Sub1, (expr_of_sexp ex), ps)
           | (Sym("let", p1)::Nest(b, p2)::body::[]) ->
-              (* Add a check for empty set of bindings here *)
-                Let((expr_of_sexpr_bindings b p1), (expr_of_sexp body), p1)
+             (* Add a check for empty set of bindings here *)
+             let bindings = (expr_of_sexpr_bindings b p1) in
+             if (is_valid? bindings) then
+               Let(bindings, (expr_of_sexp body), p1)
+             else
+               raise (SyntaxError (sprintf "Duplicate bindings found in let expression"))
            | _ ->
               raise (SyntaxError (sprintf "Invalid nest sexp at pos %s"
                                     (pos_to_string (sexp_info s) true)))
@@ -71,6 +80,12 @@ let rec expr_of_sexp (s : pos sexp) : pos expr =
      |_ ->
        raise (SyntaxError (sprintf "Invalid sexp at pos %s"
                              (pos_to_string (sexp_info s) true)))
+
+(* Takes a list of nests representing let bindings and converts then into (string * expr) list *)
+(* expr_of_sexpr_bindings :
+      [ Nest([Sym("x", p11); Int(1, p12)], p1) ;
+       Nest([Sym("y", p21); Int(2, p22)], p2) ...] -> [("x", Number(1)) ; ("y", Number(2))]
+ *)
 and expr_of_sexpr_bindings (b : pos sexp list) (p : pos) : (string * pos expr) list =
     match b with
       | [] -> []
