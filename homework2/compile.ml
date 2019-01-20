@@ -49,14 +49,25 @@ type 'a expr =
  *)
            
 exception SyntaxError of string
-let expr_of_sexp (s : pos sexp) : pos expr =
-  (* COMPLETE THIS FUNCTION *)
+let rec expr_of_sexp (s : pos sexp) : pos expr =
   match s with
   | Sym(s, p) -> Id(s, p)
   | Int(i, p) -> Number(i, p)
+  | Nest(lsxp, p) ->
+     (match lsxp with
+     | (Sym("add1", pa)::ex::_) ->
+        Prim1(Add1, (expr_of_sexp ex), pa)
+       
+     | (Sym("sub1", ps)::ex::_) ->
+        Prim1(Sub1, (expr_of_sexp ex), ps)
+       
+     (*| (Sym("let", pl)::bindings::body::rest) ->
+        Let( *)
+     | _ ->
+        failwith (sprintf "Converting sexp not yet implemented at pos %s"
+                    (pos_to_string (sexp_info s) true)))
   | _ ->
-     failwith (sprintf "Converting sexp not yet implemented at pos %s"
-                    (pos_to_string (sexp_info s) true))
+     failwith (sprintf "blah")
 
 (* Functions that implement the compiler *)
 
@@ -82,8 +93,9 @@ let instruction_to_asm_string (i : instruction) : string =
   match i with
   | IMov(dest, value) ->
      sprintf "\tmov %s, %s" (arg_to_asm_string dest) (arg_to_asm_string value)
-  (* COMPLETE THIS FUNCTION *)
-  | IRet -> sprintf "ret"
+  | IRet -> sprintf "\tret"
+  | IAdd(dest, value) ->
+     sprintf "\tadd %s, %s" (arg_to_asm_string dest) (arg_to_asm_string value)
   | _ ->
      failwith "Other instructions not yet implemented" 
 
@@ -122,7 +134,17 @@ let rec compile_env
       | Some(a) ->
         [
           IMov(Reg(EAX), Const(a)) 
-        ])
+     ])
+  | Prim1(Add1, e, _) ->
+    (compile_env e stack_index env) @
+      [
+        IAdd(Reg(EAX), Const(1))
+      ]
+  | Prim1(Sub1, e, _) ->
+     (compile_env e stack_index env) @
+       [
+         IAdd(Reg(EAX), Const(-1))
+       ]
   |_ ->
      failwith "Other exprs not yet implemented"
 

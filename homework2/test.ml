@@ -12,6 +12,8 @@ let suite : OUnit2.test =
 "suite">:::
  [
    t "forty_one" "41" "41";
+   t "add_1_const" "(add1 2)" "3";
+   t "sub_1_const" "(sub1 2)" "1";
    te "x_not_in_env" "x" "Unbound identifie";
  (*  te "nyi" "(let ((x 10)) x)" "not yet implemented" *)
 
