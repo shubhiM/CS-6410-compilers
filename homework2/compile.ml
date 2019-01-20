@@ -53,7 +53,7 @@ let rec expr_of_sexp (s : pos sexp) : pos expr =
   let rec is_valid? (bs : (string * pos expr) list) : bool =
     (match bs with
     | [] -> true
-    | ((v, ex)::rest) ->
+    | ((v, _)::rest) ->
         (not (List.mem_assoc v rest)) && (is_valid? rest))
    in
    match s with
@@ -67,11 +67,11 @@ let rec expr_of_sexp (s : pos sexp) : pos expr =
                 Prim1(Sub1, (expr_of_sexp ex), ps)
           | (Sym("let", p1)::Nest(b, p2)::body::[]) ->
              (* Add a check for empty set of bindings here *)
-             let bindings = (expr_of_sexpr_bindings b p1) in
-             if (is_valid? bindings) then
-               Let(bindings, (expr_of_sexp body), p1)
-             else
-               raise (SyntaxError (sprintf "Duplicate bindings found in let expression"))
+             (*let bindings = (expr_of_sexpr_bindings b p1) in *)
+             (* if (is_valid? bindings) then *)
+               Let((expr_of_sexpr_bindings b p1), (expr_of_sexp body), p1)
+            (* else
+               raise (SyntaxError (sprintf "Duplicate bindings found in let expression"))*)
            | _ ->
               raise (SyntaxError (sprintf "Invalid nest sexp at pos %s"
                                     (pos_to_string (sexp_info s) true)))
@@ -113,11 +113,10 @@ let reg_to_asm_string (r : reg) : string =
 let arg_to_asm_string (a : arg) : string =
   match a with
   | Const(n) -> sprintf "%d" n
-  (* COMPLETE THIS FUNCTION *)
   | Reg(reg) ->
      (reg_to_asm_string reg)
-  | _ ->
-     failwith "Other args not yet implemented"
+  | RegOffset(offset, reg) ->
+     sprintf "[%s - %d]" (reg_to_asm_string reg) (offset*4)
 
 let instruction_to_asm_string (i : instruction) : string =
   match i with
@@ -126,8 +125,6 @@ let instruction_to_asm_string (i : instruction) : string =
   | IRet -> sprintf "\tret"
   | IAdd(dest, value) ->
      sprintf "\tadd %s, %s" (arg_to_asm_string dest) (arg_to_asm_string value)
-  | _ ->
-     failwith "Other instructions not yet implemented"
 
 let to_asm_string (is : instruction list) : string =
   List.fold_left (fun s i -> sprintf "%s\n%s" s (instruction_to_asm_string i)) "" is
@@ -162,9 +159,7 @@ let rec compile_env
       match stack_slot with
       | None -> failwith "Unbound identifier"
       | Some(a) ->
-        [
-          IMov(Reg(EAX), Const(a)) 
-     ])
+        [IMov(Reg(EAX), RegOffset(a, ESP))])
   | Prim1(Add1, e, _) ->
     (compile_env e stack_index env) @
       [
@@ -175,8 +170,8 @@ let rec compile_env
        [
          IAdd(Reg(EAX), Const(-1))
        ]
-  |_ ->
-    failwith "Other exprs not yet implemented"
+  |Let(bindings, body, _) ->
+     failwith "Other exprs not yet implemented"
 
 let compile (p : pos expr) : instruction list =
   compile_env p 1 [] (* Start at the first stack slot, with an empty environment *)
