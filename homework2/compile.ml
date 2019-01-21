@@ -65,7 +65,7 @@ let rec expr_of_sexp (s : pos sexp) : pos expr =
                 Prim1(Add1, (expr_of_sexp ex), pa)
            | (Sym("sub1", ps)::ex::[]) ->
                 Prim1(Sub1, (expr_of_sexp ex), ps)
-          | (Sym("let", p1)::Nest(b, p2)::body::[]) ->
+           | (Sym("let", p1)::Nest(b, p2)::body::[]) ->
              (* Add a check for empty set of bindings here *)
              (*let bindings = (expr_of_sexpr_bindings b p1) in *)
              (* if (is_valid? bindings) then *)
@@ -157,7 +157,7 @@ let rec compile_env
   | Id(v, _) ->
      (let stack_slot = (find env v) in
       match stack_slot with
-      | None -> failwith "Unbound identifier"
+      | None -> raise (BindingError (sprintf "Unbound identifier %s" v))
       | Some(a) ->
         [IMov(Reg(EAX), RegOffset(a, ESP))])
   | Prim1(Add1, e, _) ->
@@ -174,7 +174,7 @@ let rec compile_env
     (* compile_bindings returns a list of instructions for named-expressions and
        updates the environment with bindings *)
     let (is, new_env) = (compile_bindings bindings stack_index env) in
-    is @ (compile_env body stack_index new_env)
+    is @ (compile_env body (stack_index + 1) new_env)
 
 and compile_bindings
 (bs : (string * pos expr) list) (* list of named expressions in let expression *)
@@ -183,16 +183,14 @@ and compile_bindings
      : (instruction list * (string * int) list) (* list of intructions, new environment *)
   = 
   match bs with
-  | [] -> ([], [])
+  | [] ->
+     ([], [])
   | ((v, exp)::rs) ->
-     (* Instructions to evaluate named-expression *)
-     (* Instruction to store value of named expression on stack *)
-     (*let iexp = List.append(,
-                            ]) in
-      *)
      let iexp = (compile_env exp si env) @ [IMov(RegOffset(si, ESP), Reg(EAX))] in
      let irest, env_rest = (compile_bindings rs (si + 1) env) in
-     (iexp @ irest, [(v, si)] @ env_rest)
+     let iall = iexp @ irest in
+     let local_env  = [(v, si)] @ env_rest in
+     (iall, local_env @ env)
      
      
 
