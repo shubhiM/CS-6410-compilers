@@ -23,25 +23,42 @@ let suite : OUnit2.test =
    t "let_6" "(let ((x 2)) (let ((y (add1 x))) (add1 y)))" "4";
    t "let_7" "(let ((x 2)) (let ((x (add1 x))) x))" "3"; 
    
-   (* top level bindings are accessible in the nested lets *)
+   (* lexical scope is maintained *)
    t "let_8" "(let ( (x 1) (y 2) )
                 (let ( (z (add1 y)) )
                   (let ( (y (add1 z) ) ) x ))) " "1"; 
    
-   (* lexical scope is maintained *)
    t "let_9" "(let ( (x 1) (y 2) )
                 (let ( (z (add1 y)) )
                   (let ( (x (add1 z) ) ) x ))) " "4"; 
    
    t "let_10" "(let ( (x 1) (y 2) )
                 (let ( (z (add1 y)) )
-                  (let ( (y (add1 z) ) ) z ))) " "3"; 
+                  (let ( (y (add1 z) ) ) z ))) " "3";
+
+   t "let_11" "(let ((x (let ((y (add1 2))) (sub1 y)))) x)" "2";
+   t "let_12" "(let ((x 5) (y x)) y)" "5";
+   t "let_13" "(let ((x 5) (y (sub1 x))) (sub1 y))" "3";
+   t "let_14" "(let ((x 5) (y (sub1 x)) (z (sub1 y))) (sub1 z))" "2";
+   t "let_15" "(let ((x 5) (y 6) (z y)) z)" "6";
+   t "let_16" "(let ((x (let ((x 5)) (sub1 x)))) x)" "4";
+
+   (* nested let named expressions *)
+   t "let_17" "(let ((z (let ( (x 1) (y 2) )
+                           (let ( (z (add1 y)) )
+                              (let ( (z (add1 z) ) ) z ))))) z) " "4";
+
+  t "let_18" 
+      "(let ((z 1))
+        (let ( (z (let ((y 2)) 
+                     (let ((z (add1 y)))
+                        (let ((z (add1 z))) z ))))) z))" "4";
 
    te "x_err" "x" "Unbound identifier";
    te "let_err_1" "(let ((x (add1 x))) (add1 x))" "Unbound identifier";
    te "let_err_4" "(let ((x (add1 y))) (add1 x))" "Unbound identifier";
-
-  ]
+  
+    ]
 ;;
 
 

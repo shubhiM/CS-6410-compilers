@@ -184,13 +184,13 @@ and compile_bindings
   = 
   match bs with
   | [] ->
-     ([], [])
+     ([], env)
   | ((v, exp)::rs) ->
      let iexp = (compile_env exp si env) @ [IMov(RegOffset(si, ESP), Reg(EAX))] in
-     let irest, env_rest = (compile_bindings rs (si + 1) env) in
+     let irest, env_rest = (compile_bindings rs (si + 1) ([(v, si)] @ env)) in
      let iall = iexp @ irest in
-     let local_env  = [(v, si)] @ env_rest in
-     (iall, local_env @ env)
+     (*let local_env  = [(v, si)] @ env_rest in*)
+     (iall, env_rest)
      
      
 
@@ -207,4 +207,3 @@ our_code_starts_here:" in
   let asm_string = (to_asm_string ((compile prog) @ [IRet])) in
   let asm_program = sprintf "%s%s\n" prelude asm_string in
   asm_program
-
