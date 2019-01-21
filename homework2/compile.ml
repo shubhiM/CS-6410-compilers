@@ -50,12 +50,12 @@ type 'a expr =
 exception SyntaxError of string                  
 let rec expr_of_sexp (s : pos sexp) : pos expr =
   (* Returns true if there are no duplicate bindings in the let expression *)
-  let rec is_valid? (bs : (string * pos expr) list) : bool =
+  (*let rec is_valid? (bs : (string * pos expr) list) : bool =
     (match bs with
     | [] -> true
     | ((v, _)::rest) ->
         (not (List.mem_assoc v rest)) && (is_valid? rest))
-   in
+   in*)
    match s with
     | Sym(sym, p) -> Id(sym, p)
     | Int(i, p) -> Number(i, p)
@@ -171,7 +171,30 @@ let rec compile_env
          IAdd(Reg(EAX), Const(-1))
        ]
   |Let(bindings, body, _) ->
-     failwith "Other exprs not yet implemented"
+    (* compile_bindings returns a list of instructions for named-expressions and
+       updates the environment with bindings *)
+    let (is, new_env) = (compile_bindings bindings stack_index env) in
+    is @ (compile_env body stack_index new_env)
+
+and compile_bindings
+(bs : (string * pos expr) list) (* list of named expressions in let expression *)
+(si : int) (* current stack index *)
+(env : (string * int) list) (* environment in which named-expressions are compiled *)
+     : (instruction list * (string * int) list) (* list of intructions, new environment *)
+  = 
+  match bs with
+  | [] -> ([], [])
+  | ((v, exp)::rs) ->
+     (* Instructions to evaluate named-expression *)
+     (* Instruction to store value of named expression on stack *)
+     (*let iexp = List.append(,
+                            ]) in
+      *)
+     let iexp = (compile_env exp si env) @ [IMov(RegOffset(si, ESP), Reg(EAX))] in
+     let irest, env_rest = (compile_bindings rs (si + 1) env) in
+     (iexp @ irest, [(v, si)] @ env_rest)
+     
+     
 
 let compile (p : pos expr) : instruction list =
   compile_env p 1 [] (* Start at the first stack slot, with an empty environment *)
