@@ -35,46 +35,91 @@ type 'a expr =
   | Let of (string * 'a expr) list * 'a expr * 'a
   | Prim1 of prim1 * 'a expr * 'a
 
+(* The exception to be thrown when some sort of problem is found with names *)
+exception BindingError of string
+
+(* The exception to be thrown when some sort of problem is found with syntax *)
+exception SyntaxError of string
+
+let rec string_of_sexp s =
+  match s with
+  | Sym (x, _) -> x
+  | Int (n, _) -> string_of_int n
+  | Bool (_, _) -> failwith "Not implemented"
+  | Nest (sexps, _) ->
+      List.fold_left
+        (fun str sexp ->
+          str
+          ^ (if String.length str != 1 then " " else "")
+          ^ string_of_sexp sexp )
+        "(" sexps
+      ^ ")"
+
+let syntax_error (msg : string) info =
+  raise (SyntaxError (msg ^ " at " ^ pos_to_string info true))
+
 (* Function to convert from unknown s-expressions to Adder exprs
    Throws a SyntaxError message if there's a problem
  *)
-
-exception SyntaxError of string
-
 let rec expr_of_sexp (s : pos sexp) : pos expr =
+  let expr_of_bindings bindings =
+    List.fold_left
+      (fun exprs sexp ->
+        match sexp with
+        | Nest ([Sym (x, info'); expr], info) ->
+            if x = "let" || x = "add1" || x = "sub1" then
+              raise
+                (BindingError
+                   ( "Reserved keyword " ^ x ^ " is redefined at "
+                   ^ pos_to_string info' true ))
+            else if List.exists (fun (y, _) -> x = y) exprs then
+              raise
+                (BindingError
+                   ( "Variable " ^ x ^ " is redefined at "
+                   ^ pos_to_string info' true ))
+            else
+              let let_expr = (x, expr_of_sexp expr) in
+              exprs @ [let_expr]
+        | _ ->
+            syntax_error
+              ( "Expecting (IDENTIFIER <expr>) but received "
+              ^ string_of_sexp sexp )
+              (sexp_info sexp) )
+      [] bindings
+  in
   match s with
-  | Sym (sym, p) -> Id (sym, p)
-  | Int (i, p) -> Number (i, p)
-  | Nest (lsxp, p) -> (
-    match lsxp with
-    | [Sym ("add1", pa); ex] -> Prim1 (Add1, expr_of_sexp ex, pa)
-    | [Sym ("sub1", ps); ex] -> Prim1 (Sub1, expr_of_sexp ex, ps)
-    | [Sym ("let", p1); Nest (b, p2); body] ->
-        Let (expr_of_sexpr_bindings b p1, expr_of_sexp body, p1)
+  | Sym (id, info) -> Id (id, info)
+  | Int (n, info) -> Number (n, info)
+  | Bool (value, info) -> failwith "Not implemented"
+  | Nest (sexps, info) -> (
+    match sexps with
+    | [Sym ("let", _); (Nest (bindings, info') as bs); b] ->
+        if List.length bindings != 0 then
+          let exprs = expr_of_bindings bindings in
+          Let (exprs, expr_of_sexp b, info)
+        else
+          syntax_error
+            ("Expecting <bindings> but received " ^ string_of_sexp bs)
+            info'
+    | [Sym ("add1", _); b] -> Prim1 (Add1, expr_of_sexp b, info)
+    | [Sym ("sub1", _); b] -> Prim1 (Sub1, expr_of_sexp b, info)
+    | Sym ("let", _) :: rest ->
+        syntax_error
+          ( "Expecting (let (<bindings>) <expr>) but received "
+          ^ string_of_sexp s )
+          info
+    | Sym ("add1", _) :: rest ->
+        syntax_error
+          ("Expecting (add1 <expr>) but received " ^ string_of_sexp s)
+          info
+    | Sym ("sub1", _) :: rest ->
+        syntax_error
+          ("Expecting (sub1 <expr>) but received " ^ string_of_sexp s)
+          info
     | _ ->
-        raise
-          (SyntaxError
-             (sprintf "Invalid nest sexp at pos %s"
-                (pos_to_string (sexp_info s) true))) )
-  | _ ->
-      raise
-        (SyntaxError
-           (sprintf "Invalid sexp at pos %s" (pos_to_string (sexp_info s) true)))
-
-(* Takes a list of nests representing let bindings and converts then into (string * expr) list *)
-and expr_of_sexpr_bindings (b : pos sexp list) (p : pos) :
-    (string * pos expr) list =
-  match b with
-  | [] -> []
-  | n :: ns -> (
-    match n with
-    | Nest ([Sym (s, sp); ex], p2) ->
-        [(s, expr_of_sexp ex)] @ expr_of_sexpr_bindings ns p
-    | _ ->
-        raise
-          (SyntaxError
-             (sprintf "Wrong syntax for let bindings at %s"
-                (pos_to_string p true))) )
+        syntax_error
+          ("Expecting let/add1/sub1 but received " ^ string_of_sexp s)
+          info )
 
 (* Functions that implement the compiler *)
 
@@ -113,9 +158,6 @@ let rec find (ls : (string * 'a) list) (x : string) : 'a option =
   | [] -> None
   | (y, v) :: rest -> if y = x then Some v else find rest x
 
-(* The exception to be thrown when some sort of problem is found with names *)
-exception BindingError of string
-
 (* The actual compilation process.  The `compile` function is the primary function,
    and uses `compile_env` as its helper.  In a more idiomatic OCaml program, this
    helper would likely be a local definition within `compile`, but separating it out
@@ -141,26 +183,28 @@ let rec compile_env (p : pos expr)
   | Let (bindings, body, _) ->
       (* compile_bindings returns a list of instructions for named-expressions and
        updates the environment with bindings *)
-      let is, new_env = compile_bindings bindings stack_index env in
-      is @ compile_env body (stack_index + 1) new_env
+      let is, new_env, nxt_stack_index =
+        compile_bindings bindings stack_index env
+      in
+      is @ compile_env body nxt_stack_index new_env
 
 and compile_bindings (bs : (string * pos expr) list)
     (* list of named expressions in let expression *)
     (si : int)  (* current stack index *)
                (env : (string * int) list) :
-    instruction list * (string * int) list =
-  (* environment in which named-expressions are compiled *)
-  (* list of intructions, new environment *)
+    (* environment in which named-expressions are compiled *)
+    instruction list * (string * int) list * int =
   match bs with
-  | [] -> ([], env)
+  | [] -> ([], env, si)
   | (v, exp) :: rs ->
       let iexp =
         compile_env exp si env @ [IMov (RegOffset (si, ESP), Reg EAX)]
       in
-      let irest, env_rest = compile_bindings rs (si + 1) ([(v, si)] @ env) in
+      let irest, env_rest, next_stack_index =
+        compile_bindings rs (si + 1) ([(v, si)] @ env)
+      in
       let iall = iexp @ irest in
-      (*let local_env  = [(v, si)] @ env_rest in*)
-      (iall, env_rest)
+      (iall, env_rest, next_stack_index)
 
 let compile (p : pos expr) : instruction list = compile_env p 1 []
 
