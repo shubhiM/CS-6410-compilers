@@ -28,7 +28,35 @@ type tag = int
 (* PROBLEM 2 *)
 (* This function assigns a unique tag to every subexpression and let binding *)
 let tag (e : 'a expr) : tag expr =
-  failwith "tag: Implement this"
+  let rec tag_helper (e: 'a expr) (curr : tag) : (tag expr * tag) =
+    | EId(x, _) -> (EId(x, curr), curr + 1)
+    | ENumber(n, _) -> (ENumber(n, curr), curr + 1)
+    | EPrim1(op, e, _) ->
+      let e_tagged, next_tag = tag_helper e (curr + 1) in
+      (EPrim1(op, e_tagged, curr), next_tag)
+    | EPrim2(op, e1, e2, _) ->
+      let e1_tagged, next_tag = tag_helper e1 (curr + 1) in
+      let e2_tagged, last_tag = tag_helper e2 next_tag in
+      (EPrim2(op, e1_tagged, e2_tagged), last_tag)
+    | ELet(binds, body, _) ->
+      let tagged_binds, next_tag = List.fold
+        (
+          fun ((t_bindings : tag expr), n_tag : int) (b: 'a expr) ->
+            let t_exp, n_t = tag_helper b n_tag in
+              (t_bindings::t_exp, n_t)
+        )
+        ([], curr) (* accumulator *)
+        binds (* all bindings *)
+      in
+      let tagged_body, last_tag = tag_helper body next_tag in
+      ELet(tagged_binds, tagged_body, last_tag)
+    | EIf(cond, thn, els, _) ->
+        let tagged_cond, next_tag_1 = tag_helper cond curr in
+          let tagged_thn, next_tag_2 = tag_helper thn next_tag_1 in
+            let tagged_els, last_tag = tag_helper els next_tag_2 in
+              EIf(tagged_cond, tagged_thn, tagged_els, last_tag)
+  in
+  let (tagged, _) = tag_helper e in tagged
 ;;
 
 (* This function removes all tags, and replaces them with the unit value.
@@ -42,7 +70,7 @@ let rec untag (e : 'a expr) : unit expr =
   | EPrim2(op, e1, e2, _) ->
      EPrim2(op, untag e1, untag e2, ())
   | ELet(binds, body, _) ->
-     ELet(List.map(fun (x, b, _) -> (x, untag b, ())) binds, untag body, ())
+     ELet(List.map (fun (x, b, _) -> (x, untag b, ())) binds, untag body, ())
   | EIf(cond, thn, els, _) ->
      EIf(untag cond, untag thn, untag els, ())
 
