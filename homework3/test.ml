@@ -57,36 +57,19 @@ let prim2_4 = EPrim2 (Minus, prim2_3, prim2_1, ())
 
 let prim2_5 = EPrim2 (Plus, EId ("x", ()), EId ("y", ()), ())
 
+(* two simple bindings *)
 let let_1 = ELet ([("x", n_1, ()); ("y", id_3, ())], prim2_5, ())
 
-(* two simple bindings *)
-
+(* binding with complex expression *)
 let let_2 = ELet ([("x", prim1_3, ())], id_1, ())
 
-(* binding with complex expression *)
-
+(* nested let in the bind *)
 let let_3 = ELet ([("z", let_2, ())], id_3, ())
 
-(* nested let in the bind *)
-
+(* nested in the binding and in the body  *)
 let let_4 = ELet ([("y", let_2, ())], let_3, ())
 
-(* nested in the binding and in the body  *)
-
-(* Add samples to test tagging in case of lets and ifs and some complex scenarios *)
-
-;;
-(*
-printf "Tagged1:\n%s\n\n" (format_expr (tag let_1) string_of_int)
-
-;;
-printf "Tagged2:\n%s\n\n" (format_expr (tag let_2) string_of_int)
-
-;;
-printf "Tagged3:\n%s\n\n" (format_expr (tag let_3) string_of_int)
-
-;;
-printf "Tagged4:\n%s\n\n" (format_expr (tag let_4) string_of_int) *)
+let if_1 = EIf (prim1_4, prim2_3, let_1, ())
 
 let tag_tests =
   [ teq "test_tag_n_1" (format_expr (tag n_1) string_of_int) "ENumber<1>(41)"
@@ -175,6 +158,20 @@ let tag_tests =
       \    ),\n\
       \    EId<17>(\"z\")\n\
       \  )\n\
+       )"
+  ; teq "test_tag_if_1"
+      (format_expr (tag if_1) string_of_int)
+      "EIf<1>(\n\
+      \  EPrim1<2>(Sub1, EPrim1<3>(Sub1, EPrim1<4>(Add1, ENumber<5>(41)))),\n\
+      \  EPrim2<6>(\n\
+      \    Times,\n\
+      \    EPrim2<7>(Plus, ENumber<8>(41), ENumber<9>(5)),\n\
+      \    EPrim2<10>(Plus, EId<11>(\"x\"), ENumber<12>(5))\n\
+      \  ),\n\
+      \  ELet<13>(\n\
+      \    (( \"x\"<14>, ENumber<15>(41)), ( \"y\"<16>, EId<17>(\"z\"))),\n\
+      \    EPrim2<18>(Plus, EId<19>(\"x\"), EId<20>(\"y\"))\n\
+      \  )\n\
        )" ]
 
 let suite =
@@ -190,7 +187,7 @@ let suite =
              ()));
  *)
          (*ta "forty_one_run_anf" (tag forty_one_a) "41";*)
-
+         
          (*t "forty_one" forty_one "41";
 
 
