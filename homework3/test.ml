@@ -71,6 +71,91 @@ let let_4 = ELet ([("y", let_2, ())], let_3, ())
 
 let if_1 = EIf (prim1_4, prim2_3, let_1, ())
 
+let int_tests =
+  [ t "int_1" "41" "41"
+  ; t "int_2" "2147483647" "2147483647"
+  ; t "int_3" "add1(2147483647)" "-2147483648"
+  ; t "add1_5" "add1(5)" "6"
+  ; t "sub1_5" "sub1(5)" "4"
+  ; t "add1_neg5" "add1(-5)" "-4"
+  ; t "sub1_neg5" "sub1(-5)" "-6"
+  (*; t "sub1_sub1" "(sub1 (sub1 5))" "3"
+  ; t "add1_sub1" "(add1 (sub1 5))" "5"
+  ; t "sub1_add1_sub1" "(sub1 (add1 (sub1 5)))" "4" *) ]
+
+
+let let_tests =
+    [ t "let_0" "let x = 10 in x" "10"
+    ; t "let_1" "let x = 2 in add1(x)" "3"
+    ; t "let_2" "let x = add1(2) in add1(x)" "4"
+    ; t "let_3" "let x = 3 in let y = 4 in add1(x)" "4"
+    ; t "let_4" "let x = 3 in let y = 4 in add1(y)" "5"
+    ; t "let_5" "let x = 3 in let y = 4 in let z = 10 in let w = 8 in w" "8"
+    ; t "let_6" "let x = 2 in let y = add1(x) in add1(y)" "4"
+
+   (* TODO: uncomment once anf function is completely done *)
+   (*; t "let_3" "(let ((x 3) (y 4)) (add1 x))" "4"
+   ; t "let_4" "(let ((x 3) (y 4)) (add1 y))" "5"
+   ; t "let_5" "(let ((x 3) (y 4) (z 10) (w 8)) w)" "8" *)
+
+    (* TODO: check if the shadowing of variables with same name is permitted in the boa language *)
+    ; t "let_7" "let x = 2 in let x = add1(x) in x" "3"
+    (*; t "let_8" "let x = add1(2) in add1(sub1(x))" "3" *)
+]
+
+(*  let more_tests =
+  [ t "more_0"
+      {| (let ((x 1))
+          (let ((y (sub1 x)))
+               x))
+  |} "1"
+  ; t "more_1"
+      {| (let ((x 1) (y (add1 x)))
+  	      (let ((z (sub1 y)))
+               (add1 (sub1 y))))
+  |}
+      "2"
+  ; t "more_2"
+      {| (let ((x 1) (y (let ((x 10)) (sub1 (sub1 x)))))
+  	      (let ((x y) (z x))
+  	           (sub1 z)))
+  |}
+      "7"
+  ; t "more_3" {| (let ((x 1) (y 2) (z 0))
+  	      z)
+  |} "0"
+  ; t "more_4"
+      {| (let ((x 1))
+  	      (let ((x 2))
+  	      	   (let ((x 3)) x)))
+  |}
+      "3"
+  ; t "more_5" {| (let ((x 1))
+  	      (let ((y 2)) x))
+  |} "1"
+  ; t "more_6"
+      {| (let ((a 1))
+  	      (let ((x 2) (a (add1 x)))
+  	           (let ((x 3)) a)))
+  |}
+      "3"
+  ; t "more_7"
+      {| (let ((a 1))
+          (let ((b (sub1 a)) (c (sub1 (sub1 b))) (d c))
+               (let ((e (let ((f c)) (sub1 f))))
+                    (sub1 (let ((g (sub1 e))) g)))))
+  |}
+      "-5"
+  ; t "more_8"
+      {| (let ((x 1))
+          (let ((x (add1 x)))
+               (let ((x (add1 x)))
+                    (let ((x (add1 x))) x))))
+  |}
+      "4" ]
+*)
+
+
 let tag_tests =
   [ teq "test_tag_n_1" (format_expr (tag n_1) string_of_int) "ENumber<1>(41)"
   ; teq "test_tag_id_1" (format_expr (tag id_1) string_of_int) "EId<1>(\"x\")"
@@ -190,14 +275,15 @@ let suite =
 
          (*t "forty_one" forty_one "41";
 
-
-  tprog "test1.boa" "3"; *)
+*)
+    tprog "test_2.boa" "3";
 
     (* Some useful if tests to start you off *)
 
   t "if1" "if 5: 4 else: 2" "4";
   t "if2" "if 0: 4 else: 2" "2";
  ]
-       @ tag_tests
-
+@ tag_tests
+@ int_tests
+@ let_tests
 let () = run_test_tt_main suite
