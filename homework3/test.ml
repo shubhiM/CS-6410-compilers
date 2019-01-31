@@ -187,17 +187,17 @@ let suite =
              ()));
  *)
          (*ta "forty_one_run_anf" (tag forty_one_a) "41";*)
-         
+
          (*t "forty_one" forty_one "41";
 
 
-  tprog "test1.boa" "3";
+  tprog "test1.boa" "3"; *)
 
     (* Some useful if tests to start you off *)
 
   t "if1" "if 5: 4 else: 2" "4";
   t "if2" "if 0: 4 else: 2" "2";
-*) ]
+ ]
        @ tag_tests
 
 let () = run_test_tt_main suite

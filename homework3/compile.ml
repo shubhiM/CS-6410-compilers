@@ -18,7 +18,6 @@ and is_imm e =
   | _ -> false
 ;;
 
-(* PROBLEM 1 *)
 (* This function should encapsulate the binding-error checking from Adder *)
 exception BindingError of string
 let rec check_scope (e : (Lexing.position * Lexing.position) expr) : unit =
@@ -115,7 +114,7 @@ let rec anf_helper (e: tag expr) : (unit expr * (string * unit expr) list) =
 
 (* This function converts a tagged expression into an untagged expression in A-normal form *)
 let anf (e : tag expr) : unit expr =
-  failwith "anf: Implement this"
+  if is_anf e then untag e else failwith "anf: Implement this"
 ;;
 
 
@@ -167,7 +166,6 @@ let rec find ls x =
   | (y,v)::rest ->
      if y = x then v else find rest x
 
-(* PROBLEM 5 *)
 (* This function actually compiles the tagged ANF expression into assembly *)
 (* The si parameter should be used to indicate the next available stack index for use by Lets *)
 (* The env parameter associates identifier names to stack indices *)
@@ -239,7 +237,7 @@ our_code_starts_here:" in
 
 
 let compile_to_string prog =
-  check_scope prog;
+  (*check_scope prog;*)
   let tagged : tag expr = tag prog in (* first we are tagging the input program by the user *)
   let anfed : tag expr = tag (anf tagged) in (* converting tagged expression to its ANF form *)
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)
