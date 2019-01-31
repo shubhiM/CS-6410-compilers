@@ -259,6 +259,36 @@ let tag_tests =
       \  )\n\
        )" ]
 
+let already_anfed_tests = [
+    t "t_1" "if 5: 4 else: 2" "4";
+    t "t_2" "if 0: 4 else: 2" "2";
+    t "t_3" "1" "1";
+    te "t_4" "foo" "Name foo not found";
+    t "t_5" "add1(10)" "11";
+    t "t_6" "sub1(0)" "-1";
+    te "t_7" "add1(y)" "Name y not found";
+    t "t_8" "-3 + 2" "-1";
+    t "t_9" "3 + 2" "5";
+    t "t_10" "3 + -2" "1";
+    t "t_11" "-3 + -2" "-5";
+
+    (* Multiplication is not working as expected *)
+
+    t "t_12" "0 * 5 " "0";
+    t "t_13" "1 * 5"  "5";
+
+    te "t_14" "x * y" "Name x not found";
+    te "t_15" "1 * y" "Name y not found";
+    t "t_16" "1 - 1" "0";
+    t "t_17" "1 - -10" "11";
+
+    t "t_18" "if 5: add1(4) else: 2" "5";
+    t "t_19" "if 0: 4 else: sub1(2)" "1";
+
+    (* bigger programs in the input folder *)
+    tprog "test_2.boa" "3";
+    tprog "test_3.boa" "2";
+]
 let suite =
   "suite"
   >::: [ (*tanf "forty_one_anf"
@@ -276,14 +306,14 @@ let suite =
          (*t "forty_one" forty_one "41";
 
 *)
-    tprog "test_2.boa" "3";
+
 
     (* Some useful if tests to start you off *)
 
-  t "if1" "if 5: 4 else: 2" "4";
-  t "if2" "if 0: 4 else: 2" "2";
+
  ]
-@ tag_tests
+(*@ tag_tests
 @ int_tests
-@ let_tests
+@ let_tests *)
+@ already_anfed_tests
 let () = run_test_tt_main suite

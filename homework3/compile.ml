@@ -217,7 +217,6 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        [IMov(RegOffset(~-si, ESP), Reg(EAX))] @
        (compile_expr body (si + 1) ([(id, si)] @ env))
       )
-
   | _ -> failwith "Impossible: Not in ANF"
 and compile_imm e env =
   match e with

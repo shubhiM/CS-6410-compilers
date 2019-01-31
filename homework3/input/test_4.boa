@@ -1,0 +1,12 @@
+
+
+if (let x=10 , y=6 , z=4 in (x - (y + z))):
+add1(sub1(2))
+else:
+(sub1(add1(2)))
+
+
+
+let t2
+let t1=t2 in
+t1
