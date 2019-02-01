@@ -114,17 +114,28 @@ let rec anf_helper (e : tag expr) : unit expr * (string * unit expr) list =
       , cond_context @ thn_context @ els_context
         @ [(temp, EIf (cond_ans, thn_ans, els_ans, ()))] )
 
+
+let rec create_nested_let_exprs
+  (bindings : (string * unit expr) list)
+  (body : unit expr) :
+    unit expr =
+      (match bindings with
+      | [] -> body
+      | ((x, e)::rest) ->
+          let transformed_e = (create_nested_let_expr e) in
+          ELet(
+             [(x, transformed_e, ())],
+             (create_nested_let_exprs rest body), ()))
+and create_nested_let_expr (ex : unit expr) : unit expr =
+  match ex with
+  | ELet(binds, bd, _) -> (create_nested_let_exprs binds bd)
+  | _ -> ex
+
 (* This function converts a tagged expression into an untagged expression in A-normal form *)
 let anf (e : tag expr) : unit expr =
-  let rec create_lested_let_expr (bindings : (string * unit expr) list)
-      (body : unit expr) : unit expr =
-    match bindings with
-    | [] -> body
-    | (x, e) :: rest ->
-        ELet ([(x, e, ())], create_lested_let_expr rest body, ())
-  in
-  let e_ans, e_context = anf_helper e in
-  create_lested_let_expr e_context e_ans
+  (* what if you have the context of the same type as a unit bind  list *)
+  let e_ans, e_context = anf_helper e
+  in create_nested_let_exprs e_context e_ans
 
 (* Helper functions *)
 let r_to_asm (r : reg) : string = match r with EAX -> "eax" | ESP -> "esp"
@@ -193,6 +204,7 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) :
       @ [IJmp done_label; ILabel else_label]
       @ compile_expr els si env @ [ILabel done_label]
   | ELet ([(id, e, _)], body, _) ->
+      printf "I am here\n\n" ;
       (* Anfed let has only one binding at each level *)
       let is_id = compile_expr e (si + 1) env in
       is_id
@@ -221,7 +233,7 @@ let compile_to_string prog =
   (* first we are tagging the input program by the user *)
   let anfed : tag expr = tag (anf tagged) in
   (* converting tagged expression to its ANF form *)
-  (*printf "Prog:\n%s\n" (ast_of_expr prog) ;
+  printf "Prog:\n%s\n" (ast_of_expr prog) ;
   printf "Tagged:\n%s\n" (format_expr tagged string_of_int) ;
-  printf "ANFed/tagged:\n%s\n" (format_expr anfed string_of_int) ; *)
+  printf "ANFed/tagged:\n%s\n" (format_expr anfed string_of_int) ;
   compile_anf_to_string anfed
