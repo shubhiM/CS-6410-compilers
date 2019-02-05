@@ -259,11 +259,38 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
      let body = compile_expr body (si + 1) ((id, si)::env) in
      prelude
      @ [ IMov(RegOffset(~-si, EBP), Reg(EAX)) ]
+     (* pushing the arguments based on the base pointer in the call stack now instead of the stack pointer *)
      @ body
-  | EPrim1(Add1, e , _) ->
-    (compile_expr e si env) @ [IAdd(Reg(EAX), Const(1))]
-  | EPrim2 _ -> failwith "Fill in here"
-  | EIf _ -> failwith "Fill in here"
+  | EPrim1 (op, e, _) ->
+      (* this is an immediate expression but compile_expr is preffered
+      over compile_imm for simplicity *)
+      let inst_1 = compile_expr e si env in
+     (
+       match op with
+       | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 1)]
+       | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 1)]
+       | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
+     )
+  | EPrim2 (op, left, right, _) ->
+     let left_value = compile_imm left env in
+     let right_value = compile_imm right env in
+     (
+       match op with
+       | Plus -> [IMov (Reg EAX, left_value); IAdd (Reg EAX, right_value)]
+       | Minus -> [IMov (Reg EAX, left_value); ISub (Reg EAX, right_value)]
+       | Times -> [IMov (Reg EAX, left_value); IMul (Reg EAX, right_value)]
+       | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
+    )
+  | EIf (cond, thn, els, tag) ->
+      let else_label = sprintf "if_false_%d" tag in
+      let done_label = sprintf "done_%d" tag in
+      (* this is an immediate expression but compile_expr is preffered
+       over compile_imm for simplicity *)
+      compile_expr cond si env
+      @ [ICmp (Reg EAX, Const 0); IJe else_label]
+      @ compile_expr thn si env
+      @ [IJmp done_label; ILabel else_label]
+      @ compile_expr els si env @ [ILabel done_label]
   | ENumber(n, _) -> [ IMov(Reg(EAX), compile_imm e env) ]
   | EBool(n, _) -> [ IMov(Reg(EAX), compile_imm e env) ]
   | EId(x, _) -> [ IMov(Reg(EAX), compile_imm e env) ]
@@ -271,10 +298,11 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
 and compile_imm (e : tag expr) (env : (string * int) list) : arg =
   match e with
   | ENumber(n, _) ->
-     if n > 1073741823 || n < -1073741824 then
+     if n > 1073741823 then
        failwith ("Compile-time integer overflow: " ^ (string_of_int n))
+     else if n < -1073741824 then
+       failwith ("Compile-time integer underflow: " ^ (string_of_int n))
      else
-       (*failwith "Fill in here" *)
        Const(n)
   | EBool(true, _) -> failwith "Fill in here"
   | EBool(false, _) -> failwith "Fill in here"
