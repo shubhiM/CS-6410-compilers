@@ -21,7 +21,6 @@ let int_tests =
   ; t "t_int_lower_bound" "-1073741824" "-1073741824"
 
   (* Arithmetic unary operators *)
-
   ; t "t_int_unary_1" "add1(5)" "6"
   ; t "t_int_unary_2" "sub1(5)" "4"
   ; t "t_int_unary_3" "add1(-5)" "-4"
@@ -59,7 +58,6 @@ let int_tests =
   ; t "t_int_cmp_10" "1 * 2 * 3 * 4 * 5 == 120" "true"
   ; t "t_int_cmp_11" "(1 * 2 * 3 * 4 * 5) == 120" "true"
 
-
   (* Illegal arithmetic expressions *)
   ; te "t_arith_err_1" "add1(true)" "arithmetic expected a number"
   ; te "t_arith_err_2" "add1(false)" "arithmetic expected a number"
@@ -74,13 +72,13 @@ let int_tests =
   ; te "t_arith_err_11" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number"
 
   (* Illegal Logical expressions *)
-  ; t "t_int_log_err_1" "!(1)" "expected a boolean"
-  ; t "t_int_log_err_2" "1 && 2" "expected a boolean"
-  ; t "t_int_log_err_3" "1 || 2" "expected a boolean"
-  ; t "t_int_log_err_4" "1 && true" "expected a boolean"
+  ; te "t_int_log_err_1" "!(1)" "expected a boolean"
+  ; te "t_int_log_err_2" "1 && 2" "expected a boolean"
+  ; te "t_int_log_err_3" "1 || 2" "expected a boolean"
+  ; te "t_int_log_err_4" "1 && true" "expected a boolean"
   ; t "t_int_log_err_5" "false && (1 + 2 + 3)" "false" (* shortcircuiting *)
   ; t "t_int_log_err_6" "true || 2" "true" (* shortciruiting  *)
-  ; t "t_int_log_err_7" "2 || true" "expected a boolean"
+  ; te "t_int_log_err_7" "2 || true" "expected a boolean"
 
   (* Illegal comparison expressions *)
   ; te "t_cmp_err_1" "1 < true" "comparison expected a boolean"
@@ -91,9 +89,6 @@ let int_tests =
   ; te "t_cmp_err_6" "false >= false" "comparison expected a boolean"
   ; te "t_cmp_err_7" "add1(1) >= true" "comparison expected a boolean"
   ; te "t_cmp_err_8" "add1(true) >= false" "arithmetic expected a number"
-
-
-
 
   (* Integer overflow and underflow tests *)
   ; te "t_int_overflow_1" "add1(add1(1073741822))" "Compile-time integer overflow"
@@ -138,7 +133,7 @@ let let_tests = [
 let suite =
 "suite">:::
  [
-  t "forty" "add1(40)" "41"
+  t "forty" "41" "41"
   (*t "fals" fals "false";
   t "tru" tru "true";*)
  ];;

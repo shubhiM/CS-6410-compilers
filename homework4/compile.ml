@@ -46,9 +46,9 @@ let check_scope (e : (Lexing.position * Lexing.position) expr) : unit =
            env binds in
        help body env2
   in help e []
-  
 
-  
+
+
 
 type tag = int
 let tag (e : 'a expr) : tag expr =
@@ -97,7 +97,7 @@ let rec untag (e : 'a expr) : unit expr =
 
 
 let anf (e : tag expr) : unit expr =
-  let rec helpC (e : tag expr) : (unit expr * (string * unit expr) list) = 
+  let rec helpC (e : tag expr) : (unit expr * (string * unit expr) list) =
     match e with
     | EPrim1(op, arg, _) ->
        let (arg_imm, arg_setup) = helpI arg in
@@ -140,14 +140,14 @@ let anf (e : tag expr) : unit expr =
        let (body_ans, body_setup) = helpI (ELet(rest, body, pos)) in
        (body_ans, exp_setup @ [(bind, exp_ans)] @ body_setup)
     | EId(name, _) -> (EId(name, ()), [])
-  and anf e = 
+  and anf e =
     let (ans, ans_setup) = helpI e in
     List.fold_right (fun (bind, exp) body -> ELet([bind, exp, ()], body, ())) ans_setup ans
   in
   anf e
 ;;
 
-  
+
 let r_to_asm (r : reg) : string =
   match r with
   | EAX -> "eax"
@@ -260,7 +260,8 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
      prelude
      @ [ IMov(RegOffset(~-si, EBP), Reg(EAX)) ]
      @ body
-  | EPrim1 _ -> failwith "Fill in here"
+  | EPrim1(Add1, e , _) ->
+    (compile_expr e si env) @ [IAdd(Reg(EAX), Const(1))]
   | EPrim2 _ -> failwith "Fill in here"
   | EIf _ -> failwith "Fill in here"
   | ENumber(n, _) -> [ IMov(Reg(EAX), compile_imm e env) ]
@@ -273,7 +274,8 @@ and compile_imm (e : tag expr) (env : (string * int) list) : arg =
      if n > 1073741823 || n < -1073741824 then
        failwith ("Compile-time integer overflow: " ^ (string_of_int n))
      else
-       failwith "Fill in here"
+       (*failwith "Fill in here" *)
+       Const(n)
   | EBool(true, _) -> failwith "Fill in here"
   | EBool(false, _) -> failwith "Fill in here"
   | EId(x, _) -> RegOffset(~-(find env x), EBP)
@@ -285,7 +287,7 @@ let compile_anf_to_string (anfed : tag expr) : string =
     "section .text
 extern error
 extern print
-global our_code_starts_here" in
+global our_code_starts_here\nour_code_starts_here:" in
   let stack_setup = [
       (* FILL: insert instructions for setting up stack here *)
     ] in
@@ -299,11 +301,12 @@ global our_code_starts_here" in
 
 
 let compile_to_string (prog : 'a expr) =
+  (* printf "I am here"; *)
   check_scope prog;
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
+
   (* printf "Prog:\n%s\n" (ast_of_expr prog); *)
   (* printf "Tagged:\n%s\n" (format_expr tagged string_of_int); *)
   (* printf "ANFed/tagged:\n%s\n" (format_expr anfed string_of_int); *)
   compile_anf_to_string anfed
-
