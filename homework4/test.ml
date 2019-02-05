@@ -74,20 +74,13 @@ let int_tests =
   ; te "t_arith_err_11" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number"
 
   (* Illegal Logical expressions *)
-
-  (*
-  ; t "t_int_log_err_1" "not(1)" "expected a boolean"
-  ; t "t_int_log_err_1" "1 > 2" "false"
-  ; t "t_int_log_err_1" "1 == 2" "false"
-  ; t "t_int_cmp_4" "1 <= 2" "true"
-  ; t "t_int_cmp_5" "1 >= 2" "false"
-  ; t "t_int_cmp_6" "2 >= 2" "true"
-  ; t "t_int_cmp_7" "add1(1) >= 2" "true"
-  ; t "t_int_cmp_8" "add1(1) >= sub1(2)" "false"
-  ; t "t_int_cmp_9" "(1 + 2) >= (3 * 1)" "true"
-  ; t "t_int_cmp_10" "1 * 2 * 3 * 4 * 5 == 120" "true"
-  ; t "t_int_cmp_11" "(1 * 2 * 3 * 4 * 5) == 120" "true"
-*)
+  ; t "t_int_log_err_1" "!(1)" "expected a boolean"
+  ; t "t_int_log_err_2" "1 && 2" "expected a boolean"
+  ; t "t_int_log_err_3" "1 || 2" "expected a boolean"
+  ; t "t_int_log_err_4" "1 && true" "expected a boolean"
+  ; t "t_int_log_err_5" "false && (1 + 2 + 3)" "false" (* shortcircuiting *)
+  ; t "t_int_log_err_6" "true || 2" "true" (* shortciruiting  *)
+  ; t "t_int_log_err_7" "2 || true" "expected a boolean"
 
   (* Illegal comparison expressions *)
   ; te "t_cmp_err_1" "1 < true" "comparison expected a boolean"
