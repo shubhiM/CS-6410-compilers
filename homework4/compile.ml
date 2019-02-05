@@ -2,6 +2,9 @@ open Printf
 open Types
 open Pretty
 
+let const_true = Const(-1);;
+let const_false = Const(2147483647);;
+
 let rec is_anf (e : 'a expr) : bool =
   match e with
   | EPrim1(_, e, _) -> is_imm e
@@ -46,9 +49,6 @@ let check_scope (e : (Lexing.position * Lexing.position) expr) : unit =
            env binds in
        help body env2
   in help e []
-
-
-
 
 type tag = int
 let tag (e : 'a expr) : tag expr =
@@ -313,11 +313,11 @@ and compile_imm (e : tag expr) (env : (string * int) list) : arg =
   | EBool(true, _) ->
      (* A boolean true is decoded as  0xFFFFFFFF which corresponds
      to -1 in decimal *)
-     Const(-1)
+     const_true
   | EBool(false, _) ->
     (* A boolean false is decoded as  0x7FFFFFFF which corresponds
     to 2147483647 in decimal *)
-    Const(2147483647)
+    const_false
   | EId(x, _) -> RegOffset(~-(find env x), EBP)
   | _ -> failwith "Impossible: not an immediate"
 ;;
