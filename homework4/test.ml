@@ -14,39 +14,48 @@ let forty = "let x = 40 in x"
 let fals = "let x = false in x"
 let tru = "let x = true in x"
 
-let int_tests =
-  [
-  (* Integer bounds *)
-    t "t_int_upper_bound" "1073741823" "1073741823"
+let int_bound_tests = [
+  t "t_int_upper_bound" "1073741823" "1073741823"
   ; t "t_int_lower_bound" "-1073741824" "-1073741824"
+];;
 
-  (* Arithmetic unary operators *)
-  ; t "t_int_unary_1" "add1(5)" "6"
+let int_range_err = [
+  (* Integer overflow and underflow tests *)
+  te "t_int_overflow_1" "add1(add1(1073741822))" "Compile-time integer overflow"
+  ; te "t_int_overflow_2" "2147483647" "Compile-time integer overflow"
+  ; te "t_int_underflow_1" "sub1(sub1(sub1(-1073741822))" "Compile-time integer underflow"
+  ; te "t_int_underflow_2" "-2147483648" "Compile-time integer underflow"
+];;
+let int_unary_op_tests = [
+  t "t_int_unary_1" "add1(5)" "6"
   ; t "t_int_unary_2" "sub1(5)" "4"
   ; t "t_int_unary_3" "add1(-5)" "-4"
   ; t "t_int_unary_4" "sub1(-5)" "-6"
-  ; t "t_int_unary_5" "(sub1 (sub1 5))" "3"
-  ; t "t_int_unary_6" "(add1 (sub1 5))" "5"
-  ; t "t_int_unary_7" "(sub1 (add1 (sub1 5)))" "4"
+  ; t "t_int_unary_5" "sub1(sub1(5))" "3"
+  ; t "t_int_unary_6" "add1(sub1(5))" "5"
+  ; t "t_int_unary_7" "(sub1 (add1 (sub1 (5))))" "4"
+];;
 
-  (* Arithmetic binary operators *)
-  ; t "t_int_binary_1" "1 * 2 + 3" "5"
-  ; t "t_int_binary_2" "1 * (2 + 3)" "6"
+(* order of evaluation is left to right that obeys paranthesis *)
+let int_binary_op_tests = [
+   t "t_int_binary_1" "1 * 2 + 3" "5"
+  ; t "t_int_binary_2" "1 * (2 + 3)" "5"
   ; t "t_int_binary_3" "(1 * 2) + 3" "5"
   ; t "t_int_binary_4" "1 + 2 * 3 - 4" "5"
   ; t "t_int_binary_6" "((1 + (2 * 3)) - 4)" "3"
   ; t "t_int_binary_7" "1 + (2 * 3) - 4" "3"
   ; t "t_int_binary_8" "1 + 2 + 3 + 4 + 5 + 6" "21"
   ; t "t_int_binary_9" "1 * 2 * 3 * 4 * 5" "120"
-  ; t "t_int_binary_10" "(add1(1)) + (sub1(1))" "0"
-  ; t "t_int_binary_11" "(add1 (sub1 5)) * (sub1 (add1 (sub1 5)))" "20"
-  ; t "t_int_binary_12" "3 + sub1(3) * add1(2)" "9"
-  ; t "t_int_binary_13" "3 + sub1(3) * add1(2)" "9"
+  ; t "t_int_binary_10" "(add1(1)) + (sub1(-1))" "0"
+  ; t "t_int_binary_11" "(add1 (sub1(5))) * (sub1 (add1 (sub1 (5))))" "20"
+  ; t "t_int_binary_12" "3 + sub1(3) * add1(2)" "15"
+  ; t "t_int_binary_13" "3 + sub1(3) * add1(2)" "15"
   ; t "t_int_binary_14" "sub1(1 * 2 + 3)" "4"
   ; t "t_int_binary_15" "sub1(1 * add1(2) + 3)" "5"
+];;
 
-  (* Comparison expressions *)
-  ; t "t_int_cmp_1" "1 < 2" "true"
+let int_cmp_op_tests = [
+  t "t_int_cmp_1" "1 < 2" "true"
   ; t "t_int_cmp_2" "1 > 2" "false"
   ; t "t_int_cmp_3" "1 == 2" "false"
   ; t "t_int_cmp_4" "1 <= 2" "true"
@@ -57,9 +66,10 @@ let int_tests =
   ; t "t_int_cmp_9" "(1 + 2) >= (3 * 1)" "true"
   ; t "t_int_cmp_10" "1 * 2 * 3 * 4 * 5 == 120" "true"
   ; t "t_int_cmp_11" "(1 * 2 * 3 * 4 * 5) == 120" "true"
+];;
 
-  (* Illegal arithmetic expressions *)
-  ; te "t_arith_err_1" "add1(true)" "arithmetic expected a number"
+let arith_err_tests = [
+  te "t_arith_err_1" "add1(true)" "arithmetic expected a number"
   ; te "t_arith_err_2" "add1(false)" "arithmetic expected a number"
   ; te "t_arith_err_3" "sub1(true)" "arithmetic expected a number"
   ; te "t_arith_err_4" "sub1(false)" "arithmetic expected a number"
@@ -70,18 +80,20 @@ let int_tests =
   ; te "t_arith_err_9" "false - true" "arithmetic expected a number"
   ; te "t_arith_err_10" "true + 1" "arithmetic expected a number"
   ; te "t_arith_err_11" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number"
+];;
 
-  (* Illegal Logical expressions *)
-  ; te "t_int_log_err_1" "!(1)" "expected a boolean"
+let logical_err_tests = [
+    te "t_int_log_err_1" "!(1)" "expected a boolean"
   ; te "t_int_log_err_2" "1 && 2" "expected a boolean"
   ; te "t_int_log_err_3" "1 || 2" "expected a boolean"
   ; te "t_int_log_err_4" "1 && true" "expected a boolean"
   ; t "t_int_log_err_5" "false && (1 + 2 + 3)" "false" (* shortcircuiting *)
   ; t "t_int_log_err_6" "true || 2" "true" (* shortciruiting  *)
   ; te "t_int_log_err_7" "2 || true" "expected a boolean"
+];;
 
-  (* Illegal comparison expressions *)
-  ; te "t_cmp_err_1" "1 < true" "comparison expected a boolean"
+let cmp_err_tests = [
+   te "t_cmp_err_1" "1 < true" "comparison expected a boolean"
   ; te "t_cmp_err_2" "true > false" "comparison expected a boolean"
   ; te "t_cmp_err_3" "false == false" "comparison expected a boolean"
   ; te "t_cmp_err_4" "1 <= true" "comparison expected a boolean"
@@ -89,14 +101,8 @@ let int_tests =
   ; te "t_cmp_err_6" "false >= false" "comparison expected a boolean"
   ; te "t_cmp_err_7" "add1(1) >= true" "comparison expected a boolean"
   ; te "t_cmp_err_8" "add1(true) >= false" "arithmetic expected a number"
+];;
 
-  (* Integer overflow and underflow tests *)
-  ; te "t_int_overflow_1" "add1(add1(1073741822))" "Compile-time integer overflow"
-  ; te "t_int_overflow_2" "2147483647" "Compile-time integer overflow"
-  ; te "t_int_underflow_1" "sub1(sub1(sub1(-1073741822))" "Compile-time integer underflow"
-  ; te "t_int_underflow_2" "-2147483648" "Compile-time integer underflow"
-
-  ];;
 
 (* true/false/let/if/else -> these are keywords *)
 (* true/false is also a value *)
@@ -132,12 +138,10 @@ let let_tests = [
 
 let suite =
 "suite">:::
- [
-  t "forty" "41" "41"
-  (*t "fals" fals "false";
-  t "tru" tru "true";*)
- ];;
-
+int_bound_tests
+@ int_unary_op_tests
+@ int_binary_op_tests
+;;
 
 let () =
   run_test_tt_main suite

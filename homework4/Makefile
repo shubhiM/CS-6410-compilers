@@ -19,6 +19,7 @@ test: *.ml parser.mly lexer.mll
 	mv test.native test
 
 .INTERMEDIATE: main.o
+.PRECIOUS: main.o
 main.o: main.c
 	clang -g -m32 -c main.c
 

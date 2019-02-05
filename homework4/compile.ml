@@ -329,7 +329,6 @@ global our_code_starts_here\nour_code_starts_here:" in
 
 
 let compile_to_string (prog : 'a expr) =
-  (* printf "I am here"; *)
   check_scope prog;
   let tagged : tag expr = tag prog in
   let anfed : tag expr = tag (anf tagged) in
