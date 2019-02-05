@@ -303,9 +303,21 @@ and compile_imm (e : tag expr) (env : (string * int) list) : arg =
      else if n < -1073741824 then
        failwith ("Compile-time integer underflow: " ^ (string_of_int n))
      else
-       Const(n)
-  | EBool(true, _) -> failwith "Fill in here"
-  | EBool(false, _) -> failwith "Fill in here"
+       (* Integers are decoded by doing a left shift *)
+       (* LSB of binary representation of a 32 bit Number
+       is set to 0 to indicate that it is an integer *)
+
+       (* TODO: Left shift can lead to problem with signed numbers and also can cause overflows *)
+       (* see how to handle those situations *)
+       Const(n lsl 1)
+  | EBool(true, _) ->
+     (* A boolean true is decoded as  0xFFFFFFFF which corresponds
+     to -1 in decimal *)
+     Const(-1)
+  | EBool(false, _) ->
+    (* A boolean false is decoded as  0x7FFFFFFF which corresponds
+    to 2147483647 in decimal *)
+    Const(2147483647)
   | EId(x, _) -> RegOffset(~-(find env x), EBP)
   | _ -> failwith "Impossible: not an immediate"
 ;;

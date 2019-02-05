@@ -138,9 +138,14 @@ let let_tests = [
 
 let suite =
 "suite">:::
-int_bound_tests
+[ t "t_1" "5" "5" ;
+  t "t_2" "-4" "-4";
+  t "t_3" "true" "true";
+  t "t_4" "false" "false"
+]
+(* int_bound_tests
 @ int_unary_op_tests
-@ int_binary_op_tests
+@ int_binary_op_tests *)
 ;;
 
 let () =
