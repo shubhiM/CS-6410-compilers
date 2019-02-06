@@ -267,8 +267,8 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
       let inst_1 = compile_expr e si env in
      (
        match op with
-       | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 1)]
-       | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 1)]
+       | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 2)]
+       | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 2)]
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
      )
   | EPrim2 (op, left, right, _) ->
@@ -278,7 +278,11 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        match op with
        | Plus -> [IMov (Reg EAX, left_value); IAdd (Reg EAX, right_value)]
        | Minus -> [IMov (Reg EAX, left_value); ISub (Reg EAX, right_value)]
-       | Times -> [IMov (Reg EAX, left_value); IMul (Reg EAX, right_value)]
+       (* Multiple was not working properly last time *)
+       | Times -> [IMov (Reg EAX, left_value);
+                   IMul (Reg EAX, right_value);
+                   ISar (Reg EAX, Const(1)) (* Arithmetic shift right to preserve the sign of the result. *)
+                   ]
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
     )
   | EIf (cond, thn, els, tag) ->
