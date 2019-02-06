@@ -278,11 +278,13 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        match op with
        | Plus -> [IMov (Reg EAX, left_value); IAdd (Reg EAX, right_value)]
        | Minus -> [IMov (Reg EAX, left_value); ISub (Reg EAX, right_value)]
-       (* Multiple was not working properly last time *)
        | Times -> [IMov (Reg EAX, left_value);
                    IMul (Reg EAX, right_value);
-                   ISar (Reg EAX, Const(1)) (* Arithmetic shift right to preserve the sign of the result. *)
+                   (* Arithmetic shift right to preserve the sign of the result. *)
+                   ISar (Reg EAX, Const(1))
                    ]
+       | And -> [IMov (Reg EAX, left_value); IAnd (Reg(EAX), right_value)]
+       | Or ->  [IMov (Reg EAX, left_value); IOr (Reg(EAX), right_value)]
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
     )
   | EIf (cond, thn, els, tag) ->

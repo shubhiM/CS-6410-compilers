@@ -111,7 +111,15 @@ let cmp_err_tests = [
 
 let bool_tests  = [
   t "t_bool_1" "true" "true";
-  t "t_bool_2" "false" "false"
+  t "t_bool_2" "false" "false";
+  t "t_bool_3" "true && true" "true";
+  t "t_bool_4" "true && false" "false";
+  t "t_bool_5" "false && false" "false";
+  t "t_bool_6" "false && true" "false";
+  t "t_bool_7" "true || true" "true";
+  t "t_bool_8" "true || false" "true";
+  t "t_bool_9" "false || false" "false";
+  t "t_bool_10" "false || true" "true"
 ];;
 
 let let_tests = [
@@ -143,6 +151,7 @@ let suite =
 int_bound_tests
 @ int_unary_op_tests
 @ int_binary_op_tests
+@ bool_tests
 ;;
 
 let () =
