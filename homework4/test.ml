@@ -119,7 +119,9 @@ let bool_tests  = [
   t "t_bool_7" "true || true" "true";
   t "t_bool_8" "true || false" "true";
   t "t_bool_9" "false || false" "false";
-  t "t_bool_10" "false || true" "true"
+  t "t_bool_10" "false || true" "true";
+  t "t_bool_11" "!(false)" "true";
+  t "t_bool_12" "!(true)" "false"
 ];;
 
 let let_tests = [

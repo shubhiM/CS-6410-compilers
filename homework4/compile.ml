@@ -4,6 +4,7 @@ open Pretty
 
 let const_true = Const(-1);;
 let const_false = Const(2147483647);;
+let const_bool_mask = Const(2147483648);;
 
 let rec is_anf (e : 'a expr) : bool =
   match e with
@@ -269,6 +270,7 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        match op with
        | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 2)]
        | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 2)]
+       | Not -> inst_1 @ [IXor (Reg EAX, const_bool_mask)]
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
      )
   | EPrim2 (op, left, right, _) ->
