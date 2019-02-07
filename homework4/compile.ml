@@ -254,6 +254,30 @@ let rec replicate (x : 'a) (i : int) : 'a list =
   else x :: (replicate x (i - 1))
 
 let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : instruction list =
+ let compile_cmp_expr (op : string) (tag : int) (l : arg) (r : arg) : instruction list =
+    let op_label = sprintf "%s_%d" op tag in
+    let done_label = sprintf "done_%d" tag in
+    let prelude =  [IMov (Reg EAX, l);
+                    ICmp (Reg EAX, r);
+                    IMov (Reg EAX, const_true)
+                    ]
+    in
+    let suffix = [IMov (Reg EAX, const_false);
+                  IJmp done_label;
+                  ILabel op_label;
+                  ILabel done_label
+                  ]
+    in
+    let body = match op with
+                 | "greater" -> [IJg op_label]
+                 | "greater_eq" -> [IJge op_label]
+                 | "less" -> [IJl op_label]
+                 | "less_eq" -> [IJle op_label]
+                 | "eq" -> [IJe op_label]
+                 | _ -> failwith "Unsupported comparison operator used"
+    in
+    prelude @ body @ suffix
+ in
   match e with
   | ELet([id, e, _], body, _) ->
      let prelude = compile_expr e (si + 1) env in
@@ -311,71 +335,11 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
                    ]
        | And -> [IMov (Reg EAX, left_value); IAnd (Reg(EAX), right_value)]
        | Or ->  [IMov (Reg EAX, left_value); IOr (Reg(EAX), right_value)]
-       | Greater ->
-        let greater_label = sprintf "greater_%d" tag in
-        let done_label = sprintf "done_%d" tag in
-       [
-        IMov (Reg EAX, left_value);
-        ICmp (Reg EAX, right_value);
-        IMov (Reg EAX, const_true); (* Assume that the result is true *)
-        IJg greater_label;
-        IMov (Reg EAX, const_false);
-        IJmp done_label;
-        ILabel greater_label;
-        ILabel done_label;
-       ]
-       | GreaterEq ->
-       let greater_eq_label = sprintf "greater_eq_%d" tag in
-       let done_label = sprintf "done_%d" tag in
-      [
-       IMov (Reg EAX, left_value);
-       ICmp (Reg EAX, right_value);
-       IMov (Reg EAX, const_true); (* Assume that the result is true *)
-       IJge greater_eq_label;
-       IMov (Reg EAX, const_false);
-       IJmp done_label;
-       ILabel greater_eq_label;
-       ILabel done_label;
-      ]
-       | Less ->
-       let less_label = sprintf "less_%d" tag in
-       let done_label = sprintf "done_%d" tag in
-      [
-       IMov (Reg EAX, left_value);
-       ICmp (Reg EAX, right_value);
-       IMov (Reg EAX, const_true); (* Assume that the result is true *)
-       IJl less_label;
-       IMov (Reg EAX, const_false);
-       IJmp done_label;
-       ILabel less_label;
-       ILabel done_label;
-      ]
-       | LessEq ->
-       let less_eq_label = sprintf "less_eq_%d" tag in
-       let done_label = sprintf "done_%d" tag in
-      [
-       IMov (Reg EAX, left_value);
-       ICmp (Reg EAX, right_value);
-       IMov (Reg EAX, const_true); (* Assume that the result is true *)
-       IJle less_eq_label;
-       IMov (Reg EAX, const_false);
-       IJmp done_label;
-       ILabel less_eq_label;
-       ILabel done_label;
-      ]
-       | Eq ->
-       let eq_label = sprintf "eq_%d" tag in
-       let done_label = sprintf "done_%d" tag in
-      [
-       IMov (Reg EAX, left_value);
-       ICmp (Reg EAX, right_value);
-       IMov (Reg EAX, const_true); (* Assume that the result is true *)
-       IJe eq_label;
-       IMov (Reg EAX, const_false);
-       IJmp done_label;
-       ILabel eq_label;
-       ILabel done_label;
-      ]
+       | Greater -> (compile_cmp_expr "greater" tag left_value right_value)
+       | GreaterEq -> (compile_cmp_expr "greater_eq" tag left_value right_value)
+       | Less -> (compile_cmp_expr "less" tag left_value right_value)
+       | LessEq -> (compile_cmp_expr "less_eq" tag left_value right_value)
+       | Eq -> (compile_cmp_expr "eq" tag left_value right_value)
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
     )
   | EIf (cond, thn, els, tag) ->
