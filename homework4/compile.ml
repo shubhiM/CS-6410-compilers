@@ -392,14 +392,28 @@ let compile_anf_to_string (anfed : tag expr) : string =
     "section .text
 extern error
 extern print
-global our_code_starts_here\nour_code_starts_here:" in
+global our_code_starts_here" in
+  (* N are the number of stack slots required to be reserved for storing arguments *)
+  let n = (count_vars anfed) in
+  (* printf "number of fun args required %d" n; *)
   let stack_setup = [
-      (* FILL: insert instructions for setting up stack here *)
-    ] in
+      ILabel("our_code_starts_here");
+      ILineComment("-----stack setup-----");
+      IPush (Reg(EBP));
+      IMov (Reg(EBP), Reg(ESP));
+
+      (* TODO Check for 16 byte alignment *)
+      ISub(Reg(ESP), Const(4*n));
+      ILineComment("-----compiled code-----");
+  ]
+  in
   let postlude = [
-      IRet
-      (* FILL: insert instructions for cleaning up stack, and maybe
-       some labels for jumping to errors, here *) ] in
+      ILineComment("-----postlude-----");
+      IMov(Reg(ESP), Reg(EBP));
+      IPop(Reg(EBP));
+      IRet;
+  ]
+  in
   let body = (compile_expr anfed 1 []) in
   let as_assembly_string = (to_asm (stack_setup @ body @ postlude)) in
   sprintf "%s%s\n" prelude as_assembly_string
