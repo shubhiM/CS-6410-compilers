@@ -253,14 +253,28 @@ let rec replicate (x : 'a) (i : int) : 'a list =
   if i = 0 then []
   else x :: (replicate x (i - 1))
 
+let is_num (e : tag expr) : bool =
+  match e with
+  | ENumber(e, _) -> true
+  | _ -> false
+
+let is_bool (e : tag expr) : bool =
+  match e with
+  | EBool(e, _) -> true
+  | _ -> false
+
 let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : instruction list =
  let compile_type_predicates (typ : string) (tag : int) : instruction list =
    let number_label = sprintf "isnumber_%d" tag in
    let done_label = sprintf "done_%d" tag in
    let prelude = [ITest (Reg EAX, Const(1)); IJe number_label] in
    let type_ins = match typ with
-      | "bool" -> [IMov (Reg EAX, const_true); IJmp done_label; ILabel number_label; IMov (Reg EAX, const_false); ILabel done_label]
-      | "number" -> [IMov (Reg EAX, const_false); IJmp done_label; ILabel number_label; IMov (Reg EAX, const_true); ILabel done_label]
+      | "bool" -> [IMov (Reg EAX, const_true); IJmp done_label;
+                   ILabel number_label; IMov (Reg EAX, const_false);
+                   ILabel done_label]
+      | "number" -> [IMov (Reg EAX, const_false); IJmp done_label;
+                     ILabel number_label; IMov (Reg EAX, const_true);
+                     ILabel done_label]
       | _ -> failwith "Unsupported type"
     in
     prelude @ type_ins
@@ -338,7 +352,7 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
       (* this is an immediate expression but compile_expr is preffered
        over compile_imm for simplicity *)
       compile_expr cond si env
-      @ [ICmp (Reg EAX, Const 0); IJe else_label]
+      @ [ICmp (Reg EAX, const_false); IJe else_label]
       @ compile_expr thn si env
       @ [IJmp done_label; ILabel else_label]
       @ compile_expr els si env @ [ILabel done_label]
