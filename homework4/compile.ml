@@ -254,6 +254,17 @@ let rec replicate (x : 'a) (i : int) : 'a list =
   else x :: (replicate x (i - 1))
 
 let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : instruction list =
+ let compile_type_predicates (typ : string) (tag : int) : instruction list =
+   let number_label = sprintf "isnumber_%d" tag in
+   let done_label = sprintf "done_%d" tag in
+   let prelude = [ITest (Reg EAX, Const(1)); IJe number_label] in
+   let type_ins = match typ with
+      | "bool" -> [IMov (Reg EAX, const_true); IJmp done_label; ILabel number_label; IMov (Reg EAX, const_false); ILabel done_label]
+      | "number" -> [IMov (Reg EAX, const_false); IJmp done_label; ILabel number_label; IMov (Reg EAX, const_true); ILabel done_label]
+      | _ -> failwith "Unsupported type"
+    in
+    prelude @ type_ins
+ in
  let compile_cmp_expr (op : string) (tag : int) (l : arg) (r : arg) : instruction list =
     let op_label = sprintf "%s_%d" op tag in
     let done_label = sprintf "done_%d" tag in
@@ -295,29 +306,8 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 2)]
        | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 2)]
        | Not -> inst_1 @ [IXor (Reg EAX, const_bool_mask)]
-       | IsBool ->
-          (* TODO: Move the isBool and isNum common code to a local helper function *)
-          let number_label = sprintf "isbool_%d" tag in
-          let done_label = sprintf "done_%d" tag in
-          inst_1 @
-          [ITest (Reg EAX, Const(1)); (* bitwise AND with 1 *)
-           IJe number_label; (* Jump to number label if the result is zero *)
-           IMov (Reg EAX, const_true); (* this is a boolean move true constant to eax *)
-           IJmp done_label; (* do unconditional jump to finish *)
-           ILabel number_label;
-           IMov (Reg EAX, const_false);
-           ILabel done_label]
-       | IsNum  ->
-         let number_label = sprintf "isnum_%d" tag in
-         let done_label = sprintf "done_%d" tag in
-         inst_1 @
-         [ITest (Reg EAX, Const(1)); (* bitwise AND with 1 *)
-          IJe number_label; (* Jump to number label if the result is zero *)
-          IMov (Reg EAX, const_false); (* this is a number move false constant to eax *)
-          IJmp done_label; (* do unconditional jump to finish *)
-          ILabel number_label;
-          IMov (Reg EAX, const_true); (* this is a number move true constant to eax *)
-          ILabel done_label]
+       | IsBool -> inst_1 @ compile_type_predicates "bool" tag
+       | IsNum  -> inst_1 @ compile_type_predicates "number" tag
        | Print -> failwith "Print is not implemented yet"
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
      )
