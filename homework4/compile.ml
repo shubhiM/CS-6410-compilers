@@ -262,7 +262,7 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
      @ [ IMov(RegOffset(~-si, EBP), Reg(EAX)) ]
      (* pushing the arguments based on the base pointer in the call stack now instead of the stack pointer *)
      @ body
-  | EPrim1 (op, e, _) ->
+  | EPrim1 (op, e, tag) ->
       (* this is an immediate expression but compile_expr is preffered
       over compile_imm for simplicity *)
       let inst_1 = compile_expr e si env in
@@ -271,6 +271,30 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 2)]
        | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 2)]
        | Not -> inst_1 @ [IXor (Reg EAX, const_bool_mask)]
+       | IsBool ->
+          (* TODO: Move the isBool and isNum common code to a local helper function *)
+          let number_label = sprintf "isbool_%d" tag in
+          let done_label = sprintf "done_%d" tag in
+          inst_1 @
+          [ITest (Reg EAX, Const(1)); (* bitwise AND with 1 *)
+           IJe number_label; (* Jump to number label if the result is zero *)
+           IMov (Reg EAX, const_true); (* this is a boolean move true constant to eax *)
+           IJmp done_label; (* do unconditional jump to finish *)
+           ILabel number_label;
+           IMov (Reg EAX, const_false);
+           ILabel done_label]
+       | IsNum  ->
+         let number_label = sprintf "isnum_%d" tag in
+         let done_label = sprintf "done_%d" tag in
+         inst_1 @
+         [ITest (Reg EAX, Const(1)); (* bitwise AND with 1 *)
+          IJe number_label; (* Jump to number label if the result is zero *)
+          IMov (Reg EAX, const_false); (* this is a number move false constant to eax *)
+          IJmp done_label; (* do unconditional jump to finish *)
+          ILabel number_label;
+          IMov (Reg EAX, const_true); (* this is a number move true constant to eax *)
+          ILabel done_label]
+       | Print -> failwith "Print is not implemented yet"
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
      )
   | EPrim2 (op, left, right, _) ->
@@ -287,6 +311,11 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
                    ]
        | And -> [IMov (Reg EAX, left_value); IAnd (Reg(EAX), right_value)]
        | Or ->  [IMov (Reg EAX, left_value); IOr (Reg(EAX), right_value)]
+       | Greater -> failwith "Greater not implemented yet!"
+       | GreaterEq -> failwith "GreaterEq not implemented yet!"
+       | Less -> failwith "Less not implemented yet!"
+       | LessEq -> failwith "LessEq not implemented yet!"
+       | Eq -> failwith "Eq not implemented yet!"
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
     )
   | EIf (cond, thn, els, tag) ->

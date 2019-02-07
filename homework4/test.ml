@@ -121,7 +121,17 @@ let bool_tests  = [
   t "t_bool_9" "false || false" "false";
   t "t_bool_10" "false || true" "true";
   t "t_bool_11" "!(false)" "true";
-  t "t_bool_12" "!(true)" "false"
+  t "t_bool_12" "!(true)" "false";
+  t "t_bool_13" "isbool(true)" "true";
+  t "t_bool_14" "isbool(false)" "true";
+  t "t_bool_15" "isbool(1)" "false";
+  t "t_bool_16" "isbool(0)" "false";
+  t "t_bool_17" "isbool(-1)" "false";
+  t "t_bool_18" "isnum(false)" "false";
+  t "t_bool_19" "isnum(true)" "false";
+  t "t_bool_20" "isnum(1)" "true";
+  t "t_bool_21" "isnum(0)" "true";
+  t "t_bool_22" "isnum(-1)" "true"
 ];;
 
 let let_tests = [
