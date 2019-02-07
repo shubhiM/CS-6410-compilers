@@ -297,7 +297,7 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
        | Print -> failwith "Print is not implemented yet"
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
      )
-  | EPrim2 (op, left, right, _) ->
+  | EPrim2 (op, left, right, tag) ->
      let left_value = compile_imm left env in
      let right_value = compile_imm right env in
      (
@@ -311,11 +311,71 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
                    ]
        | And -> [IMov (Reg EAX, left_value); IAnd (Reg(EAX), right_value)]
        | Or ->  [IMov (Reg EAX, left_value); IOr (Reg(EAX), right_value)]
-       | Greater -> failwith "Greater not implemented yet!"
-       | GreaterEq -> failwith "GreaterEq not implemented yet!"
-       | Less -> failwith "Less not implemented yet!"
-       | LessEq -> failwith "LessEq not implemented yet!"
-       | Eq -> failwith "Eq not implemented yet!"
+       | Greater ->
+        let greater_label = sprintf "greater_%d" tag in
+        let done_label = sprintf "done_%d" tag in
+       [
+        IMov (Reg EAX, left_value);
+        ICmp (Reg EAX, right_value);
+        IMov (Reg EAX, const_true); (* Assume that the result is true *)
+        IJg greater_label;
+        IMov (Reg EAX, const_false);
+        IJmp done_label;
+        ILabel greater_label;
+        ILabel done_label;
+       ]
+       | GreaterEq ->
+       let greater_eq_label = sprintf "greater_eq_%d" tag in
+       let done_label = sprintf "done_%d" tag in
+      [
+       IMov (Reg EAX, left_value);
+       ICmp (Reg EAX, right_value);
+       IMov (Reg EAX, const_true); (* Assume that the result is true *)
+       IJge greater_eq_label;
+       IMov (Reg EAX, const_false);
+       IJmp done_label;
+       ILabel greater_eq_label;
+       ILabel done_label;
+      ]
+       | Less ->
+       let less_label = sprintf "less_%d" tag in
+       let done_label = sprintf "done_%d" tag in
+      [
+       IMov (Reg EAX, left_value);
+       ICmp (Reg EAX, right_value);
+       IMov (Reg EAX, const_true); (* Assume that the result is true *)
+       IJl less_label;
+       IMov (Reg EAX, const_false);
+       IJmp done_label;
+       ILabel less_label;
+       ILabel done_label;
+      ]
+       | LessEq ->
+       let less_eq_label = sprintf "less_eq_%d" tag in
+       let done_label = sprintf "done_%d" tag in
+      [
+       IMov (Reg EAX, left_value);
+       ICmp (Reg EAX, right_value);
+       IMov (Reg EAX, const_true); (* Assume that the result is true *)
+       IJle less_eq_label;
+       IMov (Reg EAX, const_false);
+       IJmp done_label;
+       ILabel less_eq_label;
+       ILabel done_label;
+      ]
+       | Eq ->
+       let eq_label = sprintf "eq_%d" tag in
+       let done_label = sprintf "done_%d" tag in
+      [
+       IMov (Reg EAX, left_value);
+       ICmp (Reg EAX, right_value);
+       IMov (Reg EAX, const_true); (* Assume that the result is true *)
+       IJe eq_label;
+       IMov (Reg EAX, const_false);
+       IJmp done_label;
+       ILabel eq_label;
+       ILabel done_label;
+      ]
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
     )
   | EIf (cond, thn, els, tag) ->

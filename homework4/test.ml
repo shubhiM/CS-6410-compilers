@@ -5,6 +5,8 @@ open OUnit2
 
 let t name program expected = name>::test_run program name expected;;
 let te name program expected = name>::test_err program name expected;;
+
+(* TODO: Write tests to check all the positive things to see that so far everything is going too good *)
 (*
 let tprog filename expected = filename >:: test_run_input filename expected
 let teprog filename expected = filename >:: test_err_input filename expected
@@ -62,7 +64,7 @@ let int_cmp_op_tests = [
   ; t "t_int_cmp_5" "1 >= 2" "false"
   ; t "t_int_cmp_6" "2 >= 2" "true"
   ; t "t_int_cmp_7" "add1(1) >= 2" "true"
-  ; t "t_int_cmp_8" "add1(1) >= sub1(2)" "false"
+  ; t "t_int_cmp_8" "add1(1) >= sub1(2)" "true"
   ; t "t_int_cmp_9" "(1 + 2) >= (3 * 1)" "true"
   ; t "t_int_cmp_10" "1 * 2 * 3 * 4 * 5 == 120" "true"
   ; t "t_int_cmp_11" "(1 * 2 * 3 * 4 * 5) == 120" "true"
@@ -164,6 +166,7 @@ int_bound_tests
 @ int_unary_op_tests
 @ int_binary_op_tests
 @ bool_tests
+@ int_cmp_op_tests
 ;;
 
 let () =
