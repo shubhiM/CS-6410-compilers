@@ -130,7 +130,7 @@ let let_tests = [
                   let y = if ((x - 1) > 0) : 0 else: x in x |} "1";
   t "let_15" {| let x = 2 in
                   let y = if ((x - 1) == 1): x else: 0 in x |} "2";
-  te "let_16" {| let x = 1, y = 2, z = if x: 3 else: 4 in z |} "Expected boolean";
+
   t "let_17" {| let x = (let y = 2 in y) in x |} "2";
   t "let_18" {| let x = 2 * 2 + 1, y = x * 2, z = y - (x * y) in z |} "-40";
   t "let_19" {| let x = add1(4), y = x * add1(1), z = y - (x * y) in z |} "-40";
@@ -160,38 +160,22 @@ let if_tests = [
   t "if_15" {| let x = 0, y = if x>0: x else: 2 in
                   y |} "2";
 
-  (* TODO: Getting signal 10 *)
-  (* t "if_16" {| let c1 = 1 in
+  t "if_16" {| let c1 = 1 in
                 let c2 = 2 in
                   let x = (if c1 == 1: (5 + 5) else: (6 * 2)) in
                     let y = (if c2 == 2: (x * 3) else: (x + 5)) in
-                      x + y |} "40"; *)
-
+                      x + y |} "40";
   t "if_17" {| if (let x = (1 < 2) in x && x): 1 else: 2 |} "1";
   t "if_18" {| if true: (let x = 0 in x + 1) else: 2 |} "1";
   t "if_19" {| if false: 0 else: (let x = 0 in x + 1) |} "1";
-
-  (* TODO: Getting signal 10 *)
-  (* t "if_20" {| if (let x = false, y = true in x || y): (let x = 1, y = 2 in x * y) else: 1 |} "2" *)
-
-
   t "if_20" {| if (let x = false in let y = true in x || y): 1 else: 2 |} "1";
   t "if_21" {| if true: (let x = false in let y = true in x || y) else: 2 |} "true";
   t "if_22" {| if (let x = true in x): (let x = 2 in x) else: 0 |} "2";
-  te "if_23" {| if 1 < 3 < 4: (4 - 3) * (1 + 2) else: 0 |} "Expected number";
-
-  (* TODO: signaling -10 *)
-  (* t "if_24" {| if ((let x = 2 in x) - 2) > 0: 0
-               else: (if ((let y = 2 in y * 2) - 4) > 0: 0 else: 10) |} "10"; *)
-
-  t "if_25" {| (if ((let x = 2 in x) - 2) < 0: 0
+  t "if_23" {| if ((let x = 2 in x) - 2) > 0: 0
+               else: (if ((let y = 2 in y * 2) - 4) > 0: 0 else: 10) |} "10";
+  t "if_24" {| (if ((let x = 2 in x) - 2) < 0: 0
                 else: (if (let y = false in y): true else: false)) && true |} "false";
-
-  te "if_26" {| if (let x = 1 in x) < (let y = 2 in y) < (let z = 3 in z): true else: false |} "Expected number";
-
- (* TODO: why is this evaluating to false *)
-  (* t "if_27" {| if (let x = 1 in x) < (let x = 2 in y) < (let x = 3 in z): true else: false |} "true"; *)
-
+  t "if_25" {| if (let x = false, y = true in x || y): (let x = 1, y = 2 in x * y) else: 1 |} "2"
 ];;
 
 let arith_err_tests = [
@@ -201,19 +185,15 @@ let arith_err_tests = [
   ; te "t_arith_err_4" "sub1(false)" "Expected number"
   ; te "t_arith_err_5" "sub1(true)" "Expected number"
   ; te "t_arith_err_6" "add1(sub1(false))" "Expected number"
-
   ; te "t_arith_err_7" "true * false" "Expected number"
   ; te "t_arith_err_8" "true * 1" "Expected number"
   ; te "t_arith_err_9" "1 * true" "Expected number"
-
   ; te "t_arith_err_10" "true + false" "Expected number"
   ; te "t_arith_err_11" "1 + false" "Expected number"
   ; te "t_arith_err_12" "true + 1" "Expected number"
-
   ; te "t_arith_err_13" "true - false" "Expected number"
   ; te "t_arith_err_14" "1 - false" "Expected number"
   ; te "t_arith_err_15" "true - 1" "Expected number"
-
   ; te "t_arith_err_16" "1 + true" "Expected number"
   ; te "t_arith_err_17" "1 + 2 * 3 + 4 - 5 * true" "Expected number"
 ];;
@@ -242,11 +222,17 @@ let cmp_err_tests = [
   ; te "t_cmp_err_10" "1 >= 2 && 1-1 == 0" "comparison expected a boolean"
 ];;
 
+let let_and_if_err = [
+  te "if_err_1" {| if 1 < 3 < 4: (4 - 3) * (1 + 2) else: 0 |} "Expected number";
+  te "if_err_2" {| if (let x = 1 in x) < (let y = 2 in y) < (let z = 3 in z): true else: false |} "Expected number";
+  te "if_err_3" {| if (let x = 1 in x) < (let x = 2 in x) < (let x = 3 in x): true else: false |} "Expected number";
+  te "let_err_1" {| let x = 1, y = 2, z = if x: 3 else: 4 in z |} "Expected boolean";
+]
+
 
 (* true/false/let/if/else -> these are keywords *)
 (* true/false is also a value *)
 (* anything else is an identifier and need to run through the scoping rules *)
-
 
 let suite =
 "suite">:::
@@ -259,6 +245,7 @@ int_bound_tests
 @ let_tests
 @ arith_err_tests
 @ logical_err_tests
+@ let_and_if_err
 ;;
 
 let () =
