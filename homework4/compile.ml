@@ -345,15 +345,39 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
      let right_value = compile_imm right env in
      (
        match op with
-       | Plus -> [IMov (Reg EAX, left_value); IAdd (Reg EAX, right_value)]
-       | Minus -> [IMov (Reg EAX, left_value); ISub (Reg EAX, right_value)]
-       | Times -> [IMov (Reg EAX, left_value);
-                   IMul (Reg EAX, right_value);
-                   (* Arithmetic shift right to preserve the sign of the result. *)
-                   ISar (Reg EAX, Const(1))
-                   ]
-       | And -> [IMov (Reg EAX, left_value); IAnd (Reg(EAX), right_value)]
-       | Or ->  [IMov (Reg EAX, left_value); IOr (Reg(EAX), right_value)]
+       | Plus ->  [IMov (Reg EAX, left_value)] @
+                  assert_num_ins @
+                  [IMov (RegOffset(~-si, EBP), Reg EAX)] @
+                  [IMov (Reg EAX, right_value)] @
+                  assert_num_ins @
+                  [IMov (Reg EAX, RegOffset(~-si, EBP))] @
+                  [IAdd (Reg EAX, right_value)]
+       | Minus -> [IMov (Reg EAX, left_value)] @
+                  assert_num_ins @
+                  [IMov (RegOffset(~-si, EBP), Reg EAX)] @
+                  [IMov (Reg EAX, right_value)] @
+                  assert_num_ins @
+                  [IMov (Reg EAX, RegOffset(~-si, EBP))] @
+                  [ISub (Reg EAX, right_value)]
+       | Times -> [IMov (Reg EAX, left_value)] @
+                   assert_num_ins @
+                   [IMov (RegOffset(~-si, EBP), Reg EAX)] @
+                   [IMov (Reg EAX, right_value)] @
+                   assert_num_ins @
+                   [IMov (Reg EAX, RegOffset(~-si, EBP))] @
+                   [IMul (Reg EAX, right_value); ISar (Reg EAX, Const(1))]
+
+       | And -> [IMov (Reg EAX, left_value)] @
+                 assert_bool_ins @
+                [IMov (RegOffset(~-si, EBP), Reg EAX); IMov (Reg EAX, right_value)] @
+                assert_bool_ins @
+                [IMov (Reg EAX, RegOffset(~-si, EBP)); IAnd (Reg(EAX), right_value)]
+
+       | Or ->  [IMov (Reg EAX, left_value)] @
+                 assert_bool_ins @
+                [IMov (RegOffset(~-si, EBP), Reg EAX); IMov (Reg EAX, right_value)] @
+                assert_bool_ins @
+                [IMov (Reg EAX, RegOffset(~-si, EBP)); IOr (Reg(EAX), right_value)]
        | Greater -> (compile_cmp_expr "greater" tag left_value right_value)
        | GreaterEq -> (compile_cmp_expr "greater_eq" tag left_value right_value)
        | Less -> (compile_cmp_expr "less" tag left_value right_value)

@@ -201,21 +201,32 @@ let arith_err_tests = [
   ; te "t_arith_err_4" "sub1(false)" "Expected number"
   ; te "t_arith_err_5" "sub1(true)" "Expected number"
   ; te "t_arith_err_6" "add1(sub1(false))" "Expected number"
-  (* ; te "t_arith_err_7" "true * false" "arithmetic expected a number"
-  ; te "t_arith_err_8" "true + false" "arithmetic expected a number"
-  ; te "t_arith_err_9" "false - true" "arithmetic expected a number"
-  ; te "t_arith_err_10" "true + 1" "arithmetic expected a number"
-  ; te "t_arith_err_11" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number" *)
+
+  ; te "t_arith_err_7" "true * false" "Expected number"
+  ; te "t_arith_err_8" "true * 1" "Expected number"
+  ; te "t_arith_err_9" "1 * true" "Expected number"
+
+  ; te "t_arith_err_10" "true + false" "Expected number"
+  ; te "t_arith_err_11" "1 + false" "Expected number"
+  ; te "t_arith_err_12" "true + 1" "Expected number"
+
+  ; te "t_arith_err_13" "true - false" "Expected number"
+  ; te "t_arith_err_14" "1 - false" "Expected number"
+  ; te "t_arith_err_15" "true - 1" "Expected number"
+
+  ; te "t_arith_err_16" "1 + true" "Expected number"
+  ; te "t_arith_err_17" "1 + 2 * 3 + 4 - 5 * true" "Expected number"
 ];;
 
 let logical_err_tests = [
     te "t_int_log_err_1" "!(1)" "Expected boolean"
-  (* ; te "t_int_log_err_2" "1 && 2" "expected a boolean"
-  ; te "t_int_log_err_3" "1 || 2" "expected a boolean"
-  ; te "t_int_log_err_4" "1 && true" "expected a boolean"
-  ; t "t_int_log_err_5" "false && (1 + 2 + 3)" "false" (* shortcircuiting *)
-  ; t "t_int_log_err_6" "true || 2" "true" (* shortciruiting  *)
-  ; te "t_int_log_err_7" "2 || true" "expected a boolean" *)
+  ; te "t_int_log_err_2" "1 && 2" "Expected boolean"
+  ; te "t_int_log_err_3" "1 || 2" "Expected boolean"
+  ; te "t_int_log_err_4" "1 && true" "Expected boolean"
+  ; te "t_int_log_err_7" "2 || true" "Expected boolean"
+  (* Could have been short circuited as design choice *)
+  ; te "t_int_log_err_5" "false && (1 + 2 + 3)" "Expected boolean"
+  ; te "t_int_log_err_6" "true || 2" "Expected boolean"
 ];;
 
 let cmp_err_tests = [
