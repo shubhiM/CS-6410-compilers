@@ -5,6 +5,10 @@ open Pretty
 let const_true = Const(-1);;
 let const_false = Const(2147483647);;
 let const_bool_mask = Const(2147483648);;
+let error_not_number = "error_not_number";;
+let error_not_boolean = "error_not_boolean";;
+let error_code_num = 1;;
+let error_code_bool = 2;;
 
 let rec is_anf (e : 'a expr) : bool =
   match e with
@@ -253,17 +257,21 @@ let rec replicate (x : 'a) (i : int) : 'a list =
   if i = 0 then []
   else x :: (replicate x (i - 1))
 
-let is_num (e : tag expr) : bool =
-  match e with
-  | ENumber(e, _) -> true
-  | _ -> false
 
-let is_bool (e : tag expr) : bool =
-  match e with
-  | EBool(e, _) -> true
-  | _ -> false
 
 let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : instruction list =
+  let assert_num_ins =
+      [
+        ITest (Reg(EAX), Const(1));
+        IJne (error_not_number);
+      ]
+  in
+  let assert_bool_ins  =
+    [
+      ITest (Reg(EAX), Const(1));
+      IJe (error_not_boolean);
+    ]
+ in
  let compile_type_predicates (typ : string) (tag : int) : instruction list =
    let number_label = sprintf "isnumber_%d" tag in
    let done_label = sprintf "done_%d" tag in
@@ -317,9 +325,16 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
       let inst_1 = compile_expr e si env in
      (
        match op with
-       | Add1 -> inst_1 @ [IAdd (Reg EAX, Const 2)]
-       | Sub1 -> inst_1 @ [ISub (Reg EAX, Const 2)]
-       | Not -> inst_1 @ [IXor (Reg EAX, const_bool_mask)]
+       | Add1 ->
+          inst_1 @
+          assert_num_ins @
+          [IAdd (Reg EAX, Const 2)]
+       | Sub1 -> inst_1 @
+                 assert_num_ins @
+                 [ISub (Reg EAX, Const 2)]
+       | Not -> inst_1 @
+                assert_bool_ins @
+                [IXor (Reg EAX, const_bool_mask)]
        | IsBool -> inst_1 @ compile_type_predicates "bool" tag
        | IsNum  -> inst_1 @ compile_type_predicates "number" tag
        | Print -> failwith "Print is not implemented yet"
@@ -395,7 +410,6 @@ extern print
 global our_code_starts_here" in
   (* N are the number of stack slots required to be reserved for storing arguments *)
   let n = (count_vars anfed) in
-  (* printf "number of fun args required %d" n; *)
   let stack_setup = [
       ILabel("our_code_starts_here");
       ILineComment("-----stack setup-----");
@@ -403,7 +417,7 @@ global our_code_starts_here" in
       IMov (Reg(EBP), Reg(ESP));
 
       (* TODO Check for 16 byte alignment *)
-      ISub(Reg(ESP), Const(4*n));
+      ISub(Reg(ESP), Const((4*n/16+1)*16));
       ILineComment("-----compiled code-----");
   ]
   in
@@ -412,6 +426,20 @@ global our_code_starts_here" in
       IMov(Reg(ESP), Reg(EBP));
       IPop(Reg(EBP));
       IRet;
+
+      ILineComment("-----error_not_number-----");
+      ILabel (error_not_number);
+      IPush (Reg(EAX));
+      IPush (Const(error_code_num));
+      ICall "error";
+      IAdd (Reg(ESP), Const(8));
+
+      ILineComment("-----error_not_boolean-----");
+      ILabel (error_not_boolean);
+      IPush (Reg(EAX));
+      IPush (Const(error_code_bool));
+      ICall "error";
+      IAdd (Reg(ESP), Const(8));
   ]
   in
   let body = (compile_expr anfed 1 []) in

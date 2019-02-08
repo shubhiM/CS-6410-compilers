@@ -6,16 +6,6 @@ open OUnit2
 let t name program expected = name>::test_run program name expected;;
 let te name program expected = name>::test_err program name expected;;
 
-(* TODO: Write tests to check all the positive things to see that so far everything is going too good *)
-(*
-let tprog filename expected = filename >:: test_run_input filename expected
-let teprog filename expected = filename >:: test_err_input filename expected
-*)
-
-let forty = "let x = 40 in x"
-let fals = "let x = false in x"
-let tru = "let x = true in x"
-
 let int_bound_tests = [
   t "t_int_upper_bound" "1073741823" "1073741823"
   ; t "t_int_lower_bound" "-1073741824" "-1073741824"
@@ -28,6 +18,7 @@ let int_range_err = [
   ; te "t_int_underflow_1" "sub1(sub1(sub1(-1073741822))" "Compile-time integer underflow"
   ; te "t_int_underflow_2" "-2147483648" "Compile-time integer underflow"
 ];;
+
 let int_unary_op_tests = [
   t "t_int_unary_1" "add1(5)" "6"
   ; t "t_int_unary_2" "sub1(5)" "4"
@@ -204,27 +195,27 @@ let if_tests = [
 ];;
 
 let arith_err_tests = [
-  te "t_arith_err_1" "add1(true)" "arithmetic expected a number"
-  ; te "t_arith_err_2" "add1(false)" "arithmetic expected a number"
-  ; te "t_arith_err_3" "sub1(true)" "arithmetic expected a number"
-  ; te "t_arith_err_4" "sub1(false)" "arithmetic expected a number"
-  ; te "t_arith_err_5" "sub1(true)" "arithmetic expected a number"
-  ; te "t_arith_err_6" "add1(sub1(false))" "arithmetic expected a numbe1r"
-  ; te "t_arith_err_7" "true * false" "arithmetic expected a number"
+  te "t_arith_err_1" "add1(true)" "Expected number"
+  ; te "t_arith_err_2" "add1(false)" "Expected number"
+  ; te "t_arith_err_3" "sub1(true)" "Expected number"
+  ; te "t_arith_err_4" "sub1(false)" "Expected number"
+  ; te "t_arith_err_5" "sub1(true)" "Expected number"
+  ; te "t_arith_err_6" "add1(sub1(false))" "Expected number"
+  (* ; te "t_arith_err_7" "true * false" "arithmetic expected a number"
   ; te "t_arith_err_8" "true + false" "arithmetic expected a number"
   ; te "t_arith_err_9" "false - true" "arithmetic expected a number"
   ; te "t_arith_err_10" "true + 1" "arithmetic expected a number"
-  ; te "t_arith_err_11" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number"
+  ; te "t_arith_err_11" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number" *)
 ];;
 
 let logical_err_tests = [
-    te "t_int_log_err_1" "!(1)" "expected a boolean"
-  ; te "t_int_log_err_2" "1 && 2" "expected a boolean"
+    te "t_int_log_err_1" "!(1)" "Expected boolean"
+  (* ; te "t_int_log_err_2" "1 && 2" "expected a boolean"
   ; te "t_int_log_err_3" "1 || 2" "expected a boolean"
   ; te "t_int_log_err_4" "1 && true" "expected a boolean"
   ; t "t_int_log_err_5" "false && (1 + 2 + 3)" "false" (* shortcircuiting *)
   ; t "t_int_log_err_6" "true || 2" "true" (* shortciruiting  *)
-  ; te "t_int_log_err_7" "2 || true" "expected a boolean"
+  ; te "t_int_log_err_7" "2 || true" "expected a boolean" *)
 ];;
 
 let cmp_err_tests = [
@@ -255,6 +246,8 @@ int_bound_tests
 @ int_cmp_op_tests
 @ if_tests
 @ let_tests
+@ arith_err_tests
+@ logical_err_tests
 ;;
 
 let () =
