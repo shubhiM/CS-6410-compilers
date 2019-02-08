@@ -287,13 +287,15 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
     in
     prelude @ type_ins
  in
- let compile_cmp_expr (op : string) (tag : int) (l : arg) (r : arg) : instruction list =
+ let compile_cmp_expr (op : string) (si : int) (tag : int) (l : arg) (r : arg) : instruction list =
     let op_label = sprintf "%s_%d" op tag in
     let done_label = sprintf "done_%d" tag in
-    let prelude =  [IMov (Reg EAX, l);
-                    ICmp (Reg EAX, r);
-                    IMov (Reg EAX, const_true)
-                    ]
+    let prelude =  [IMov (Reg EAX, l)] @
+                    assert_num_ins @
+                    [IMov (RegOffset(~-si, EBP), Reg EAX); IMov (Reg EAX, r)] @
+                    assert_num_ins @
+                    [IMov (Reg EAX, RegOffset(~-si, EBP))] @
+                    [ICmp (Reg EAX, r); IMov (Reg EAX, const_true)]
     in
     let suffix = [IMov (Reg EAX, const_false);
                   IJmp done_label;
@@ -378,11 +380,11 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
                 [IMov (RegOffset(~-si, EBP), Reg EAX); IMov (Reg EAX, right_value)] @
                 assert_bool_ins @
                 [IMov (Reg EAX, RegOffset(~-si, EBP)); IOr (Reg(EAX), right_value)]
-       | Greater -> (compile_cmp_expr "greater" tag left_value right_value)
-       | GreaterEq -> (compile_cmp_expr "greater_eq" tag left_value right_value)
-       | Less -> (compile_cmp_expr "less" tag left_value right_value)
-       | LessEq -> (compile_cmp_expr "less_eq" tag left_value right_value)
-       | Eq -> (compile_cmp_expr "eq" tag left_value right_value)
+       | Greater -> (compile_cmp_expr "greater" si tag left_value right_value)
+       | GreaterEq -> (compile_cmp_expr "greater_eq" si tag left_value right_value)
+       | Less -> (compile_cmp_expr "less" si tag left_value right_value)
+       | LessEq -> (compile_cmp_expr "less_eq" si tag left_value right_value)
+       | Eq -> (compile_cmp_expr "eq" si tag left_value right_value)
        | _ -> failwith ("Illegal expression %s " ^ (string_of_expr e))
     )
   | EIf (cond, thn, els, tag) ->
@@ -391,6 +393,7 @@ let rec compile_expr (e : tag expr) (si : int) (env : (string * int) list) : ins
       (* this is an immediate expression but compile_expr is preffered
        over compile_imm for simplicity *)
       compile_expr cond si env
+      @ assert_bool_ins
       @ [ICmp (Reg EAX, const_false); IJe else_label]
       @ compile_expr thn si env
       @ [IJmp done_label; ILabel else_label]
