@@ -229,6 +229,12 @@ let let_and_if_err = [
   te "let_err_1" {| let x = 1, y = 2, z = if x: 3 else: 4 in z |} "Expected boolean";
 ]
 
+let binding_errors = [
+  te "unbound_1" "let x = 1 in y" "Binding error";
+  te "unbound_2" "let x = 1, y = z in x" "Binding error";
+  te "redefined_1" "let x = 1, x = 2 in x" "Binding error";
+  te "redefined_2" "let x = 1 in let x = 2 in x" "Binding error";
+];;
 
 (* true/false/let/if/else -> these are keywords *)
 (* true/false is also a value *)
@@ -246,6 +252,7 @@ int_bound_tests
 @ arith_err_tests
 @ logical_err_tests
 @ let_and_if_err
+@ binding_errors
 ;;
 
 let () =
