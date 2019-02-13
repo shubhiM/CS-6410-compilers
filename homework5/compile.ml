@@ -35,6 +35,8 @@ let err_ARITH_NOT_NUM  = 1
 let err_LOGIC_NOT_BOOL = 2
 let err_IF_NOT_BOOL    = 3
 let err_OVERFLOW       = 4
+let const_max_int      = 1073741823
+let const_min_int      = -1073741824
 
 
 (* You may find some of these helpers useful *)
@@ -170,8 +172,9 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
   let rec wf_E (e : 'a expr) (global_env : 'a decl list) (local_env : 'a bind list) : exn list =
       match e with
        | ENumber(n, pos) ->
-        (* check for overflow and underflow at compile time for large enough values *)
-        []
+        if (n > const_max_int || n < const_min_int)
+        then [Overflow(n, pos)]
+        else []
        | EBool(b, pos) -> []
        | EId(id, pos) ->
           (match (find_bind local_env id) with
