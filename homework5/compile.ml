@@ -37,7 +37,6 @@ let err_IF_NOT_BOOL    = 3
 let err_OVERFLOW       = 4
 
 
-
 (* You may find some of these helpers useful *)
 let rec find ls x =
   match ls with
@@ -81,7 +80,6 @@ let rec find_dup (l : 'a list) : 'a option =
 ;;
 
 (* IMPLEMENT EVERYTHING BELOW *)
-
 let anf (p : tag program) : unit aprogram =
   let rec helpP (p : tag program) : unit aprogram =
     match p with
@@ -154,10 +152,22 @@ let anf (p : tag program) : unit aprogram =
 
 
 let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
-  let rec wf_E e (* other parameters may be needed here *) =
-    Error([NotYetImplemented "Implement well-formedness checking for expressions"])
-  and wf_D d (* other parameters may be needed here *) =
-    Error([NotYetImplemented "Implement well-formedness checking for definitions"])
+  let rec wf_E (e : 'a expr) : exn list =
+    []
+  and wf_D (d : 'a decl) (env : 'a decl list) : exn list =
+     match d with
+     | DFun(funname, args, body, pos_u) ->
+        let fun_name_err = match (find_decl env funname) with
+         | Some(DFun(_, _, _, pos_d)) -> [DuplicateFun(funname, pos_u, pos_d)]
+         | None -> []
+        in
+        let bind_err = match (find_dup args) with
+        | Some((b, pos_b)) -> [DuplicateId(b, pos_b, pos_u)]
+        | None -> []
+        in
+        let body_err = wf_E body
+        in
+        fun_name_err @ bind_err @ body_err
   in
   match p with
   | Program(decls, body, _) ->
@@ -187,6 +197,8 @@ let compile_prog (anfed : tag aprogram) : string =
 (* Feel free to add additional phases to your pipeline.
    The final pipeline phase needs to return a string,
    but everything else is up to you. *)
+
+(*  sourcespan decorated program and program decorated pipeline *)
 let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
   |> (add_err_phase well_formed is_well_formed)
