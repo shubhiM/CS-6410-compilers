@@ -1,12 +1,34 @@
 
-
-if (let x=10 , y=6 , z=4 in (x - (y + z))):
-add1(sub1(2))
+if (add1 1):
+   (add1 (sub1 10))
 else:
-(sub1(add1(2)))
+  (sub1 (add1 10))
+
+temp1, [(temp1, EPrim1(Add1, ENumber(1), ()))]
+if temp1:
+   temp2
+else:
+   temp3
 
 
+(EId(temp4, ()),
+        temp1_context
+        temp2_context
+        temp3_context
+        [(temp4, EIf(temp1, temp2, temp3, ()))]
 
-let t2
-let t1=t2 in
-t1
+
+let (temp1_context)
+   let temp2_context
+   let temp3_context
+   let temp4_context
+   EId(temp4, ())
+
+e_ans, e_context = anf_helper e in
+
+
+let create_lested_let_expr (bindings : unit bind list) (body : unit expr) : unit expr =
+match bindings with
+| [] -> body
+| (first::rest) ->
+   ELet([first], (create_lested_let_expr rest body), ())

@@ -68,25 +68,25 @@ let rec untag (e : 'a expr) : unit expr =
       ELet (List.map (fun (x, b, _) -> (x, untag b, ())) binds, untag body, ())
   | EIf (cond, thn, els, _) -> EIf (untag cond, untag thn, untag els, ())
 
-let rec anf_helper (e : tag expr) : unit expr * (string * unit expr) list =
+let rec anf_helper (e : tag expr) : unit expr * unit bind list =
   match e with
   | ENumber (n, tag) ->
       let temp = sprintf "$enumber_%d" tag in
-      (EId (temp, ()), [(temp, ENumber(n, ()))])
+      (EId (temp, ()), [ (temp, ENumber(n, ()), ())])
   | EId (x, tag) ->
     let temp = sprintf "$eid_%d" tag in
-    (EId(temp, ()) , [ (temp, EId(x , ())) ])
+    (EId(temp, ()) , [ (temp, EId(x , ()), ()) ])
   | EPrim1 (op, e, tag) ->
       let e_ans, e_context = anf_helper e in
       let temp = sprintf "$prim1_%d" tag in
-      (EId (temp, ()), e_context @ [(temp, EPrim1 (op, e_ans, ()))])
+      (EId (temp, ()), e_context @ [(temp, EPrim1 (op, e_ans, ()), ())])
   | EPrim2 (op, left, right, tag) ->
       let left_ans, left_context = anf_helper left in
       let right_ans, right_context = anf_helper right in
       let temp = sprintf "$prim2_%d" tag in
       ( EId (temp, ())
       , left_context @ right_context
-        @ [(temp, EPrim2 (op, left_ans, right_ans, ()))])
+        @ [(temp, EPrim2 (op, left_ans, right_ans, ()), ())])
   | ELet (bindings, body, tag) ->
       (* see if you need to use a cons way of concatenating lists because of any better reasons *)
       let anfed_bindings, anfed_binding_link, context_of_anfed_bindings =

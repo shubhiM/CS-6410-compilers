@@ -79,28 +79,27 @@ let int_tests =
   ; t "sub1_5" "sub1(5)" "4"
   ; t "add1_neg5" "add1(-5)" "-4"
   ; t "sub1_neg5" "sub1(-5)" "-6"
-  (*; t "sub1_sub1" "(sub1 (sub1 5))" "3"
-  ; t "add1_sub1" "(add1 (sub1 5))" "5"
-  ; t "sub1_add1_sub1" "(sub1 (add1 (sub1 5)))" "4" *) ]
+  ; t "sub1_sub1" "sub1(sub1(5))" "3"
+  ; t "add1_sub1" "add1(sub1(5))" "5"
+  ; t "sub1_add1_sub1" "sub1(add1(sub1(5)))" "4" ]
 
 
 let let_tests =
-    [ t "let_0" "let x = 10 in x" "10"
+    [ (*t "let_0" "let x = 10 in x" "10"
     ; t "let_1" "let x = 2 in add1(x)" "3"
     ; t "let_2" "let x = add1(2) in add1(x)" "4"
     ; t "let_3" "let x = 3 in let y = 4 in add1(x)" "4"
     ; t "let_4" "let x = 3 in let y = 4 in add1(y)" "5"
     ; t "let_5" "let x = 3 in let y = 4 in let z = 10 in let w = 8 in w" "8"
     ; t "let_6" "let x = 2 in let y = add1(x) in add1(y)" "4"
-
+*)
    (* TODO: uncomment once anf function is completely done *)
-   (*; t "let_3" "(let ((x 3) (y 4)) (add1 x))" "4"
-   ; t "let_4" "(let ((x 3) (y 4)) (add1 y))" "5"
-   ; t "let_5" "(let ((x 3) (y 4) (z 10) (w 8)) w)" "8" *)
-
+   (*t "let_7" "let x=3, y=4 in add1(x)" "4"; *)
+   (*; t "let_8" "let x=3, y=4 in add1(y)" "5" *)
+   t "let_9" "let x=3, y=4, z=10, w=8 in w" "8"
     (* TODO: check if the shadowing of variables with same name is permitted in the boa language *)
-    ; t "let_7" "let x = 2 in let x = add1(x) in x" "3"
-    (*; t "let_8" "let x = add1(2) in add1(sub1(x))" "3" *)
+   (*; t "let_10" "let x = 2 in let x = add1(x) in x" "3"
+   ; t "let_11" "let x = add1(2) in add1(sub1(x))" "3"*)
 ]
 
 (*  let more_tests =
@@ -313,8 +312,8 @@ let suite =
 
 
  ]
-(*@ tag_tests
-@ int_tests
-@ let_tests *)
-@ already_anfed_tests
+(* @ tag_tests
+@ int_tests *)
+@ let_tests
+(*)@ already_anfed_tests *)
 let () = run_test_tt_main suite
