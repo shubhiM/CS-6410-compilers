@@ -256,7 +256,10 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
        decls
      in
      let body_err = (wf_E body global_env []) in
-     (p , decl_exns @ body_err)
+     let all_err = decl_exns @ body_err in
+     match all_err with
+     | [] -> Ok(p)
+     | _ -> Error(all_err)
 ;;
 
 
