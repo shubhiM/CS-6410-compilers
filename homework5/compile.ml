@@ -80,6 +80,7 @@ let rec find_one (l : 'a list) (elt : 'a) : bool =
     | [] -> false
     | x::xs -> (elt = x) || (find_one xs elt)
 
+
 let rec find_dup (l : 'a list) : 'a option =
   match l with
     | [] -> None
@@ -161,15 +162,12 @@ let anf (p : tag program) : unit aprogram =
 
 
 let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
-  let giant_let (bindings : 'a bind list) (body : 'a expr) (pos : sourcespan) : 'a expr =
-    List.fold_right
-    (fun (b : 'a bind) (body : 'a expr) ->
-      ELet([b], body, pos)
-    )
-    bindings
-    body
-    in
-  let rec wf_E (e : 'a expr) (global_env : 'a decl list) (local_env : 'a bind list) : exn list =
+  let rec find_in_env (env : (string * sourcespan) list) (key : string) : (string * sourcespan) option =
+    match env with
+    | [] -> None
+    | (x, p) as b::xs -> if (compare x key) == 0 then Some(b) else (find_in_env xs key)
+  in
+  let rec wf_E (e : 'a expr) (global_env : 'a decl list) (local_env : (string * sourcespan) list) : exn list =
       match e with
        | ENumber(n, pos) ->
         if (n > const_max_int || n < const_min_int)
@@ -178,9 +176,11 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
         else []
        | EBool(b, pos) -> []
        | EId(id, pos) ->
-          (match (find_bind local_env id) with
-            | None -> [UnboundId(id, pos)]
-            | _ -> []
+          let id_in_local = (find_in_env local_env id) in
+          (match id_in_local with
+            | None ->
+              [UnboundId(id, pos)]
+            | _ ->[]
           )
        | EIf(cond, thn, els, pos) ->
              let cond_err = (wf_E cond global_env local_env) in
@@ -194,19 +194,45 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
         let e2_err = (wf_E e2 global_env local_env) in
         e1_err @ e2_err
       | ELet(bindings, body, pos) ->
-        let big_let = giant_let bindings body pos in
-        (match big_let with
-          | ELet([(v2, e2, p2) as b], body, pos) ->
-              let dup_bind_err = (match (find_bind local_env v2) with
-                                  | None -> []
-                                  | Some((v1, e1, p1)) -> [DuplicateId(v1, p2, p1)])
+        let (body_env, binding_exns, named_exprs_exns, shadow_exns) = List.fold_left
+        (* bind_env is the accumulator for collecting first appearance of a new binding *)
+        (* dup_b_errs is accumulator for collecting errors associated with the duplicate bindings *)
+        (* named_exp_errs is accumulator for collecting errors associated with the named expressions *)
+        (* shadow_errs is accumulator for collecting errors associated with the shadow names *)
+        (fun ((bind_env : (string * sourcespan) list),
+              (dup_b_errs : exn list),
+              (named_exp_errs : exn list),
+              (shadow_errs : exn list)
+              )
+            ((x, exp, p) : sourcespan bind) ->
+
+              let x_in_bind_env = (find_in_env bind_env x) in
+              let x_in_local_env = (find_in_env local_env x) in
+
+              (* current bind_env need to go into the local env to get semantics the let* form *)
+              let exp_errs = (wf_E exp global_env (bind_env @local_env)) in
+              let (env, b_err, n_err, s_err) = match x_in_bind_env with
+                                                | None ->
+                                                  (bind_env @ [(x, p)], dup_b_errs, named_exp_errs @ exp_errs, shadow_errs)
+                                                | Some((x_in_bind, x_in_bind_pos)) ->
+
+                                                  (bind_env, dup_b_errs @ [DuplicateId(x, p, x_in_bind_pos)],
+                                                  named_exp_errs @ exp_errs, shadow_errs)
+
               in
-              let bind_expr_err =  (wf_E e2 global_env local_env) in
-              let body_expr_err =  (wf_E body global_env (local_env @ [b])) in
-              dup_bind_err @ bind_expr_err @ body_expr_err
-          |_ ->
-            let err_msg = "Expected a let with single binding but found " ^ (ast_of_expr e) in
-            [InternalCompilerError(err_msg)])
+              match x_in_local_env with
+              | None ->
+                (env, b_err, n_err, s_err)
+              | Some((x_in_local, x_in_local_pos)) ->
+                (env, b_err, n_err, s_err @ [ShadowId(x, p, x_in_local_pos)])
+        )
+        ([], [], [], [])
+        bindings
+        in
+        (*NOTE: body_env contains either the complete bindings of let or one instance per binding *)
+        (* this information is enough to reason about well formedness of the body expression in let *)
+        let body_exns = (wf_E body global_env (body_env @ local_env)) in
+        binding_exns @ named_exprs_exns @ shadow_exns @ body_exns
       | EApp(funname, args, pos) ->
         let f_decl = (find_decl global_env funname) in
         let fun_errs = (match f_decl with
@@ -228,20 +254,29 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
        args
        in
        fun_errs @ arg_errs
-  and wf_D (d : 'a decl) (env : 'a decl list) : exn list =
+  and wf_D (d : 'a decl) (global_env : 'a decl list) : exn list =
      match d with
      | DFun(funname, args, body, pos_u) ->
-        let fun_name_err = (match (find_decl env funname) with
+        let fun_name_err = (match (find_decl global_env funname) with
          | Some(DFun(_, _, _, pos_d)) -> [DuplicateFun(funname, pos_u, pos_d)]
          | None -> [])
         in
-        let bind_err = (match (find_dup args) with
-        | Some((b, pos_b)) -> [DuplicateId(b, pos_b, pos_u)]
-        | None -> [])
+        let (duplicate_args_errs, body_env) = List.fold_left
+        (fun
+          ((errs : exn list), (arg_env : (string * sourcespan) list))
+          ((arg, pos) : string * sourcespan)
+          ->
+            let arg_in_env = (find_in_env arg_env arg) in
+            match arg_in_env with
+              | None -> (errs, arg_env @ [(arg, pos)])
+              | Some((a, p)) -> (errs @ [DuplicateId(arg, pos, p)], arg_env)
+        )
+        ([], [])
+        args
         in
-        let body_err = (wf_E body env [])
+        let body_errs = (wf_E body global_env body_env)
         in
-        fun_name_err @ bind_err @ body_err
+        fun_name_err @ duplicate_args_errs @ body_errs
   in
   match p with
   | Program(decls, body, _) ->
