@@ -23,11 +23,6 @@ let tanf name program expected = name>::fun _ ->
 let teq name actual expected = name>::fun _ ->
   assert_equal expected actual ~printer:(fun s -> s);;
 
-
-
-(* Incorrect programs *)
-
-
 (* integer overflow examples *)
 let prog_err_1  = "1073741824";;
 let prog_err_2  = "-1073741825";;
@@ -79,11 +74,8 @@ let prog_err_39 = "let x = 1, y = 2, x = 3 in x + y";;
 let prog_err_41 = "let x = 1, y = 2, z = 3, y = 4 in x + y";;
 
 (* shadow errors *)
-let prog_err_43 = "let x = true, y = false in let x = y  in if y: true else false";;
-let prog_err_44 = "let x = 1 in let y = x in let z = y in let x = y in x";;
-
-(* let prog_err_46 = "let isnum = false, isbool = true in (isnum && isbool)";; *)
-
+let prog_err_43 = "let x = true, y = false in let x = y  in if y: true else: false";;
+let prog_err_44 = "let x = 1 in let y = x in let z = y in let y = z in x";;
 
 
 (* multiple errors *)
@@ -91,8 +83,6 @@ let prog_err_23 = "1 + foo(x)";;
 let prog_err_34 = "!(foo(1073741824))";;
 let prog_err_40 = "let x = 1, y = 2, x = 3 in x + y + z";;
 let prog_err_42 = "let x = 1, x = 2, x = 3 in x";;
-
-
 
 (* correct program examples are also important to test *)
 let prog_1 = "let x = 1 in x";;
@@ -104,10 +94,12 @@ let prog_6 = "def foo(x, y):
                    (x + y)
                   foo(1, 2)";;
 
-
 let multiple_well_formedness_errs = [
-  te "t_err_23" prog_err_23 "The identifier x, used ";
+  (* tested for all both errors but including error message for only the first err *)
+  te "t_err_23" prog_err_23 "The function name foo, used at ";
   te "t_err_34" prog_err_34 "The function name foo, used at ";
+  te "t_err_40" prog_err_40 "The identifier x, redefined at ";
+  te "t_err_42" prog_err_42 "The identifier x, redefined at ";
 ]
 
 let simple_well_formedness_err = [
@@ -151,6 +143,14 @@ let simple_well_formedness_err = [
   (* Arity errors *)
    te "t_err_37" prog_err_37 "The function called at";
    te "t_err_38" prog_err_38 "The function called at";
+
+   (* duplicate id error *)
+   te "t_err_37" prog_err_39 "The identifier x, redefined at ";
+   te "t_err_38" prog_err_41 "The identifier y, redefined at ";
+
+   (* shadow error *)
+   te "t_err_43" prog_err_43 "The identifier x, defined at ";
+   te "t_err_44" prog_err_44 "The identifier y, defined at ";
  ]
 
 
@@ -167,8 +167,8 @@ let correct_programs = [
 let suite =
 "suite">:::
 simple_well_formedness_err
-(* @ multiple_well_formedness_errs *)
-@ correct_programs
+@ multiple_well_formedness_errs
+@ correct_programs 
 
 let () =
   run_test_tt_main suite
