@@ -173,13 +173,14 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
       match e with
        | ENumber(n, pos) ->
         if (n > const_max_int || n < const_min_int)
-        then [Overflow(n, pos)]
+        then
+        [Overflow(n, pos)]
         else []
        | EBool(b, pos) -> []
        | EId(id, pos) ->
           (match (find_bind local_env id) with
-            | None -> []
-            | _ -> [UnboundId(id, pos)]
+            | None -> [UnboundId(id, pos)]
+            | _ -> []
           )
        | EIf(cond, thn, els, pos) ->
              let cond_err = (wf_E cond global_env local_env) in
