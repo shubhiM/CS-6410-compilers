@@ -94,6 +94,15 @@ let prog_err_46 = "def foo(x , y):
                        let x = x, y = y in (x && y)
                    foo(true, false)";;
 
+let prog_err_48 = "let a = true, b = false in
+                      if (let x = a, y = b in (let z = (x && y), w = (x || y) in let x = isbool(z) && isnum(w) in x)):
+                        (a && b)
+                        else:
+                        (a || b)";;
+(*stupid infinite loop *)
+
+
+
 
 (* correct program examples are also important to test *)
 let prog_1 = "let x = 1 in x";;
@@ -115,6 +124,14 @@ let prog_8 = "def foo1(x, y):
                   let x = z + w, y = z - w in foo1(x + y, y - x)
               (let x = 2, y = 3, foo1 = x, foo2 = y in foo1(x, y) + (foo1 * foo2)) + (let x = 2, y = x * 3, foo1 = x, foo2 = y in foo2(x, y))";;
 
+let prog_9 = "def iftest():
+                  true
+              def ifthen():
+                  iftest()
+              def ifelse():
+                  ifthen()
+              if iftest(): ifthen() else: ifelse()";;
+
 let multiple_well_formedness_errs = [
   (* tested for all errors but including error message for only the first err *)
   te "t_err_23" prog_err_23 "The function name foo, used at ";
@@ -122,6 +139,7 @@ let multiple_well_formedness_errs = [
   te "t_err_40" prog_err_40 "The identifier x, redefined at ";
   te "t_err_42" prog_err_42 "The identifier x, redefined at ";
   te "t_err_47" prog_err_47 "The identifier x, defined at";
+
 ]
 
 let simple_well_formedness_err = [
@@ -176,9 +194,8 @@ let simple_well_formedness_err = [
    (* shadow error *)
    te "t_err_43" prog_err_43 "The identifier x, defined at ";
    te "t_err_44" prog_err_44 "The identifier y, defined at ";
+   te "prog_err_48" prog_err_48 "The identifier x, defined at";
  ]
-
-
 
 let correct_programs = [
     te "prog_1" prog_1 "Compiling programs not implemented yet";
@@ -189,6 +206,7 @@ let correct_programs = [
     te "prog_6" prog_6 "Compiling programs not implemented yet";
     te "prog_7" prog_7 "Compiling programs not implemented yet";
     te "prog_8" prog_8 "Compiling programs not implemented yet";
+    te "prog_9" prog_9 "Compiling programs not implemented yet";
 ]
 
 let suite =
