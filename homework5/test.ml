@@ -72,17 +72,28 @@ let prog_err_38 = "def foo(x, y):
 (* duplicate id *)
 let prog_err_39 = "let x = 1, y = 2, x = 3 in x + y";;
 let prog_err_41 = "let x = 1, y = 2, z = 3, y = 4 in x + y";;
+let prog_err_45 = "def foo(z, y, z):
+                       (z * y)
+                    1";;
 
 (* shadow errors *)
 let prog_err_43 = "let x = true, y = false in let x = y  in if y: true else: false";;
 let prog_err_44 = "let x = 1 in let y = x in let z = y in let y = z in x";;
 
-
 (* multiple errors *)
+let prog_err_47 = "def foo(x, y):
+                      let x = x, y = y in let x = z in z
+                   let foo = false in foo(true, false) && foo";;
+
 let prog_err_23 = "1 + foo(x)";;
 let prog_err_34 = "!(foo(1073741824))";;
 let prog_err_40 = "let x = 1, y = 2, x = 3 in x + y + z";;
 let prog_err_42 = "let x = 1, x = 2, x = 3 in x";;
+
+let prog_err_46 = "def foo(x , y):
+                       let x = x, y = y in (x && y)
+                   foo(true, false)";;
+
 
 (* correct program examples are also important to test *)
 let prog_1 = "let x = 1 in x";;
@@ -94,12 +105,23 @@ let prog_6 = "def foo(x, y):
                    (x + y)
                   foo(1, 2)";;
 
+let prog_7 = "def foo(x, y):
+                   let z = x && !(y) in z
+              let foo = false in foo(true, false) && foo";;
+
+let prog_8 = "def foo1(x, y):
+                  (x + y)
+              def foo2(z, w):
+                  let x = z + w, y = z - w in foo1(x + y, y - x)
+              (let x = 2, y = 3, foo1 = x, foo2 = y in foo1(x, y) + (foo1 * foo2)) + (let x = 2, y = x * 3, foo1 = x, foo2 = y in foo2(x, y))";;
+
 let multiple_well_formedness_errs = [
-  (* tested for all both errors but including error message for only the first err *)
+  (* tested for all errors but including error message for only the first err *)
   te "t_err_23" prog_err_23 "The function name foo, used at ";
   te "t_err_34" prog_err_34 "The function name foo, used at ";
   te "t_err_40" prog_err_40 "The identifier x, redefined at ";
   te "t_err_42" prog_err_42 "The identifier x, redefined at ";
+  te "t_err_47" prog_err_47 "The identifier x, defined at";
 ]
 
 let simple_well_formedness_err = [
@@ -140,13 +162,16 @@ let simple_well_formedness_err = [
    te "t_err_33" prog_err_33 "The function name foo, used at ";
    te "t_err_35" prog_err_35 "The function name foo, used at ";
    te "t_err_36" prog_err_36 "The function name foo, used at ";
+
   (* Arity errors *)
    te "t_err_37" prog_err_37 "The function called at";
    te "t_err_38" prog_err_38 "The function called at";
 
+
    (* duplicate id error *)
    te "t_err_37" prog_err_39 "The identifier x, redefined at ";
    te "t_err_38" prog_err_41 "The identifier y, redefined at ";
+   te "t_err_45" prog_err_45 "The identifier z, redefined at ";
 
    (* shadow error *)
    te "t_err_43" prog_err_43 "The identifier x, defined at ";
@@ -162,13 +187,15 @@ let correct_programs = [
     te "prog_4" prog_4 "Compiling programs not implemented yet";
     te "prog_5" prog_5 "Compiling programs not implemented yet";
     te "prog_6" prog_6 "Compiling programs not implemented yet";
+    te "prog_7" prog_7 "Compiling programs not implemented yet";
+    te "prog_8" prog_8 "Compiling programs not implemented yet";
 ]
 
 let suite =
 "suite">:::
 simple_well_formedness_err
 @ multiple_well_formedness_errs
-@ correct_programs 
+@ correct_programs
 
 let () =
   run_test_tt_main suite
