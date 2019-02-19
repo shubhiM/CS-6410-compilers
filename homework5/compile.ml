@@ -477,7 +477,9 @@ let compile_decl (d : tag adecl) : instruction list =
         (fun ((env : arg envt), (si_arg : int)) (arg : string) ->
              ((arg, RegOffset(si_arg, EBP))::env, si_arg + 1)
         )
-        ([] , 1)
+        ([] , 2)
+        (* There are two things between the first arg pushed by caller*)
+        (* EBP currently points to the new call stack *)
         args
         in
         let si_local = 1 in
@@ -493,8 +495,7 @@ let compile_prog (anfed : tag aprogram) : string =
   match anfed with
     | AProgram(funs, main, tag) ->
         (* treating the body of the program as the main entrypoint function *)
-        (* printf "main body %s\n" (string_of_aexpr main); *)
-
+        (* printf "Program -  %s\n" (string_of_aprogram anfed); *)
         let main_fun = ADFun("our_code_starts_here", [], main, tag) in
         let all_decls = funs @ [main_fun] in
         let compiled_decls = List.fold_left
