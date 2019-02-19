@@ -205,8 +205,8 @@ let simple_well_formedness_err = [
   ; t "t_int_unary_3" "add1(-5)" "-4"
   ; t "t_int_unary_4" "sub1(-5)" "-6"
   ; t "t_int_unary_5" "sub1(sub1(5))" "3"
-  (* ; t "t_int_unary_6" "add1(sub1(5))" "5"
-  ; t "t_int_unary_7" "(sub1 (add1 (sub1 (5))))" "4" *)
+  ; t "t_int_unary_6" "add1(sub1(5))" "5"
+  ; t "t_int_unary_7" "sub1(add1(sub1(5)))" "4"
 ]
 
 
@@ -220,8 +220,8 @@ let int_binary_op_tests = [
   ; t "t_int_binary_7" "1 + (2 * 3) - 4" "3"
   ; t "t_int_binary_8" "1 + 2 + 3 + 4 + 5 + 6" "21"
   ; t "t_int_binary_9" "1 * 2 * 3 * 4 * 5" "120"
-  ; t "t_int_binary_10" "(add1(1)) + (sub1(-1))" "0"
-  ; t "t_int_binary_11" "(add1 (sub1(5))) * (sub1 (add1 (sub1 (5))))" "20"
+  ; t "t_int_binary_10" "add1(1) + sub1(-1)" "0"
+  ; t "t_int_binary_11" "add1(sub1(5)) * sub1(add1(sub1(5)))" "20"
   ; t "t_int_binary_12" "3 + sub1(3) * add1(2)" "15"
   ; t "t_int_binary_13" "3 + sub1(3) * add1(2)" "15"
   ; t "t_int_binary_14" "sub1(1 * 2 + 3)" "4"
@@ -372,71 +372,62 @@ let if_tests = [
 ]
 
 let arith_err_tests = [
-  te "t_arith_err_1" "add1(true)" "Expected number"
-  ; te "t_arith_err_2" "add1(false)" "Expected number"
-  ; te "t_arith_err_3" "sub1(true)" "Expected number"
-  ; te "t_arith_err_4" "sub1(false)" "Expected number"
-  ; te "t_arith_err_5" "sub1(true)" "Expected number"
-  ; te "t_arith_err_6" "add1(sub1(false))" "Expected number"
-  ; te "t_arith_err_7" "true * false" "Expected number"
-  ; te "t_arith_err_8" "true * 1" "Expected number"
-  ; te "t_arith_err_9" "1 * true" "Expected number"
-  ; te "t_arith_err_10" "true + false" "Expected number"
-  ; te "t_arith_err_11" "1 + false" "Expected number"
-  ; te "t_arith_err_12" "true + 1" "Expected number"
-  ; te "t_arith_err_13" "true - false" "Expected number"
-  ; te "t_arith_err_14" "1 - false" "Expected number"
-  ; te "t_arith_err_15" "true - 1" "Expected number"
-  ; te "t_arith_err_16" "1 + true" "Expected number"
-  ; te "t_arith_err_17" "1 + 2 * 3 + 4 - 5 * true" "Expected number"
+  te "t_arith_err_1" "add1(true)" "arithmetic expected a number"
+  ; te "t_arith_err_2" "add1(false)" "arithmetic expected a number"
+  ; te "t_arith_err_3" "sub1(true)" "arithmetic expected a number"
+  ; te "t_arith_err_4" "sub1(false)" "arithmetic expected a number"
+  ; te "t_arith_err_5" "sub1(true)" "arithmetic expected a number"
+  ; te "t_arith_err_6" "add1(sub1(false))" "arithmetic expected a number"
+  ; te "t_arith_err_7" "true * false" "arithmetic expected a number"
+  ; te "t_arith_err_8" "true * 1" "arithmetic expected a number"
+  ; te "t_arith_err_9" "1 * true" "arithmetic expected a number"
+  ; te "t_arith_err_10" "true + false" "arithmetic expected a number"
+  ; te "t_arith_err_11" "1 + false" "arithmetic expected a number"
+  ; te "t_arith_err_12" "true + 1" "arithmetic expected a number"
+  ; te "t_arith_err_13" "true - false" "arithmetic expected a number"
+  ; te "t_arith_err_14" "1 - false" "arithmetic expected a number"
+  ; te "t_arith_err_15" "true - 1" "arithmetic expected a number"
+  ; te "t_arith_err_16" "1 + true" "arithmetic expected a number"
+  ; te "t_arith_err_17" "1 + 2 * 3 + 4 - 5 * true" "arithmetic expected a number"
 ]
 
 let logical_err_tests = [
-    te "t_int_log_err_1" "!(1)" "Expected boolean"
-  ; te "t_int_log_err_2" "1 && 2" "Expected boolean"
-  ; te "t_int_log_err_3" "1 || 2" "Expected boolean"
-  ; te "t_int_log_err_4" "1 && true" "Expected boolean"
-  ; te "t_int_log_err_7" "2 || true" "Expected boolean"
+    te "t_int_log_err_1" "!(1)" "logic expected a boolean"
+  ; te "t_int_log_err_2" "1 && 2" "logic expected a boolean"
+  ; te "t_int_log_err_3" "1 || 2" "logic expected a boolean"
+  ; te "t_int_log_err_4" "1 && true" "logic expected a boolean"
+  ; te "t_int_log_err_7" "2 || true" "logic expected a boolean"
   (* Could have been short circuited as design choice *)
-  ; te "t_int_log_err_5" "false && (1 + 2 + 3)" "Expected boolean"
-  ; te "t_int_log_err_6" "true || 2" "Expected boolean"
+  ; te "t_int_log_err_5" "false && (1 + 2 + 3)" "logic expected a boolean"
+  ; te "t_int_log_err_6" "true || 2" "logic expected a boolean"
 ]
 
 let cmp_err_tests = [
-   te "t_cmp_err_1" "1 < true" "comparison expected a boolean"
-  ; te "t_cmp_err_2" "true > false" "comparison expected a boolean"
-  ; te "t_cmp_err_3" "false == false" "comparison expected a boolean"
-  ; te "t_cmp_err_4" "1 <= true" "comparison expected a boolean"
-  ; te "t_cmp_err_5" "false >= 2" "comparison expected a boolean"
-  ; te "t_cmp_err_6" "false >= false" "comparison expected a boolean"
-  ; te "t_cmp_err_7" "add1(1) >= true" "comparison expected a boolean"
-  ; te "t_cmp_err_8" "add1(true) >= false" "comparison expected a boolean"
-  ; te "t_cmp_err_9" "(1 + 1 == 1 - 1)" "comparison expected a boolean"
-  ; te "t_cmp_err_10" "1 >= 2 && 1-1 == 0" "comparison expected a boolean"
+   te "t_cmp_err_1" "1 < true" "comparison expected a number"
+  ; te "t_cmp_err_2" "true > false" "comparison expected a number"
+  ; te "t_cmp_err_3" "false == false" "comparison expected a number"
+  ; te "t_cmp_err_4" "1 <= true" "comparison expected a number"
+  ; te "t_cmp_err_5" "false >= 2" "comparison expected a number"
+  ; te "t_cmp_err_6" "false >= false" "comparison expected a number"
+  ; te "t_cmp_err_7" "add1(1) >= true" "comparison expected a number"
+  ; te "t_cmp_err_8" "add1(true) >= false" "comparison expected a number"
+  ; te "t_cmp_err_9" "(1 + 1 == 1 - 1)" "comparison expected a number"
+  ; te "t_cmp_err_10" "1 >= 2 && 1-1 == 0" "comparison expected a number"
 ]
 
 let let_and_if_err = [
-  te "if_err_1" {| if 1 < 3 < 4: (4 - 3) * (1 + 2) else: 0 |} "Expected number";
-  te "if_err_2" {| if (let x = 1 in x) < (let y = 2 in y) < (let z = 3 in z): true else: false |} "Expected number";
-  te "if_err_3" {| if (let x = 1 in x) < (let x = 2 in x) < (let x = 3 in x): true else: false |} "Expected number";
-  te "let_err_1" {| let x = 1, y = 2, z = if x: 3 else: 4 in z |} "Expected boolean";
-]
-
-let binding_errors = [
-  te "unbound_1" "let x = 1 in y" "Binding error";
-  te "unbound_2" "let x = 1, y = z in x" "Binding error";
-  te "redefined_1" "let x = 1, x = 2 in x" "Binding error";
-  te "redefined_2" "let x = 1 in let x = 2 in x" "Binding error";
+  te "if_err_1" {| if 1 < 3 < 4: (4 - 3) * (1 + 2) else: 0 |} "comparison expected a number";
+  te "if_err_2" {| if (let x = 1 in x) < (let y = 2 in y) < (let z = 3 in z): true else: false |} "comparison expected a number";
+  te "if_err_3" {| if (let x = 1 in x) < (let x = 2 in x) < (let x = 3 in x): true else: false |} "comparison expected a number";
+  te "let_err_1" {| let x = 1, y = 2, z = if x: 3 else: 4 in z |} "if expected a boolean";
 ]
 
 let suite =
 "suite">:::
-(* simple_well_formedness_err
-@ multiple_well_formedness_errs *)
-(* @ correct_programs *)
-
-int_unary_op_tests
-(* @ int_binary_op_tests
+  simple_well_formedness_err
+@ multiple_well_formedness_errs
+@ int_unary_op_tests
+@ int_binary_op_tests
 @ bool_tests
 @ int_cmp_op_tests
 @ if_tests
@@ -444,7 +435,7 @@ int_unary_op_tests
 @ arith_err_tests
 @ logical_err_tests
 @ let_and_if_err
-@ binding_errors *)
+(* @ correct_programs *)
 
 let () =
   run_test_tt_main suite
