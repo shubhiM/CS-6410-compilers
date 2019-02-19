@@ -213,7 +213,7 @@ let suite =
 "suite">:::
 simple_well_formedness_err
 @ multiple_well_formedness_errs
-@ correct_programs
+(* @ correct_programs *)
 
 let () =
   run_test_tt_main suite
