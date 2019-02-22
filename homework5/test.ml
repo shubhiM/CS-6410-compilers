@@ -99,12 +99,7 @@ let prog_err_48 = "let a = true, b = false in
                         (a && b)
                         else:
                         (a || b)";;
-(*stupid infinite loop *)
 
-
-
-
-(* correct program examples are also important to test *)
 let prog_1 = "def foo(x, y):
                    (x + y)
                   foo(1, 2)";;
