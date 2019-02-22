@@ -126,20 +126,30 @@ let prog_5 = "def foo1(x, y):
                foo1(x, y)
               foo2(3, 4)"
 
-let prog_4 = "def iftest():
-                  true
+(* let prog_4 = "def iftest():
+                  ifelse()
               def ifthen():
                   iftest()
               def ifelse():
                   ifthen()
-              if iftest(): ifthen() else: ifelse()";;
+              if iftest(): ifthen() else: ifelse()";; *)
 
+(* Recursive functions *)
+let prog_4 = "def factorial(x):
+                 if x == 1: 1 else: x * factorial(x - 1)
+              factorial(5)"
+
+let prog_6 = "def fib(n):
+                 if n <= 1: 1 else: fib(n - 1) + fib(n - 2)
+              fib(30)"
 
 let correct_programs = [
   t "prog_1" prog_1 "3";
   t "prog_2" prog_2 "false";
   t "prog_3" prog_3 "3";
+  t "prog_4" prog_4 "120";
   t "prog_5" prog_5 "7";
+  t "prog_6" prog_6 "1346269";
 ]
 
 

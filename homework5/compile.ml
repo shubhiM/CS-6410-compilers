@@ -277,7 +277,10 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
         ([], [])
         args
         in
-        let body_errs = (wf_E body global_env body_env)
+        (* Adding this function name in the global environment that we pass to the function body
+         to allow for recursive function constructs
+         *)
+        let body_errs = (wf_E body (d::global_env) body_env)
         in
         fun_name_err @ duplicate_args_errs @ body_errs
   in
