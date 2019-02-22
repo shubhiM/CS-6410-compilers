@@ -305,15 +305,16 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
 ;;
 
 
-let rec compile_fun (fun_name : string) args env : instruction list =
-   let push = List.map (fun (arg : tag immexpr) -> IPush(compile_imm arg env)) (List.rev args) in
+let rec compile_fun (fun_name : string) args env is_tail : instruction list =
+   let push = List.map (fun (arg : tag immexpr) -> IPush(compile_imm arg env false)) (List.rev args) in
    let call = [ICall fun_name] in
    let clean = [IAdd (Reg ESP, Const(4 * (List.length args)))] in
    push @ call @ clean
 and compile_aexpr (e : tag aexpr) (si : int) (env : arg envt) (num_args : int) (is_tail : bool) : instruction list =
   match e with
   | ALet(id, id_exp, body, tag) ->
-    let compiled_named_expr = (compile_cexpr id_exp (si + 1) env num_args is_tail) in
+    (* Let bindings are never in tail position. *)
+    let compiled_named_expr = (compile_cexpr id_exp (si + 1) env num_args false) in
 
     (* printf "compiling named exp %s\n" (string_of_cexpr id_exp);
     printf "compiled instructions for named expr \n%s\n" (to_asm compiled_named_expr); *)
@@ -384,9 +385,9 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
     prelude @ body @ suffix
   in
   match e with
-  | CImmExpr(imm) -> [IMov(Reg(EAX), compile_imm imm env)]
+  | CImmExpr(imm) -> [IMov(Reg(EAX), compile_imm imm env is_tail)]
   | CPrim1(op, e, tag) ->
-    let compiled_e = [IMov(Reg(EAX), compile_imm e env)] in
+    let compiled_e = [IMov(Reg(EAX), compile_imm e env false)] in
     (match op with
       | Add1 -> compiled_e @ assert_arith_num @ [IAdd (Reg EAX, Const 2)]
       | Sub1 -> compiled_e @ assert_arith_num @ [ISub (Reg EAX, Const 2)]
@@ -397,8 +398,8 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
       | PrintStack -> failwith "PrintStack is not implemented yet"
       | _ -> failwith "Illegal expression!")
   | CPrim2(op, e1, e2, tag) ->
-    let v1 = compile_imm e1 env in
-    let v2 = compile_imm e2 env in
+    let v1 = compile_imm e1 env false in
+    let v2 = compile_imm e2 env false in
     (match op with
       | Plus ->
         (compile_bin_ops v1 v2 si assert_arith_num [IAdd(Reg EAX, v2)])
@@ -424,7 +425,7 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
   | CIf(cond, thn, els, tag) ->
       let else_label = sprintf "if_false_%d" tag in
       let done_label = sprintf "done_%d" tag in
-       [IMov(Reg(EAX), compile_imm cond env)]
+       [IMov(Reg(EAX), compile_imm cond env false)]
        @ assert_if_not_bool
        @ [ICmp (Reg EAX, const_false); IJe else_label]
        @ (compile_aexpr thn si env num_args is_tail)
@@ -432,8 +433,8 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
        @ (compile_aexpr els si env num_args is_tail)
        @ [ILabel done_label]
   | CApp(funname, args, tag) ->
-    (compile_fun funname args env)
-and compile_imm e env =
+    (compile_fun funname args env is_tail)
+and compile_imm e env is_tail =
   match e with
   | ImmNum(n, _) -> Const((n lsl 1))
   | ImmBool(true, _) -> const_true
@@ -486,7 +487,8 @@ let compile_decl (d : tag adecl) : instruction list =
         args
         in
         let si_local = 1 in
-        let body_ins = (compile_aexpr body si_local env num_args const_is_tail) in
+        (* body is the last thing that we compile and hence its in the tail position. *)
+        let body_ins = (compile_aexpr body si_local env num_args true) in
         stack_set_up @ body_ins @ stack_clean_up
 
 let compile_prog (anfed : tag aprogram) : string =
