@@ -24,7 +24,6 @@ and is_imm e =
   | _ -> false
 ;;
 
-
 let const_true = HexConst (0xFFFFFFFF)
 let const_false = HexConst(0x7FFFFFFF)
 let bool_mask = HexConst(0x80000000)
@@ -316,7 +315,7 @@ and compile_aexpr (e : tag aexpr) (si : int) (env : arg envt) (num_args : int) (
     (* printf "compiling named exp %s\n" (string_of_cexpr id_exp);
     printf "compiled instructions for named expr \n%s\n" (to_asm compiled_named_expr); *)
 
-    let compiled_body = (compile_aexpr body (si + 1) ((id, RegOffset(~-si, EBP))::env) num_args is_tail) in
+    let compiled_body = (compile_aexpr body (si + 1) ((id, Sized(DWORD_PTR, RegOffset(~-si, EBP)))::env) num_args is_tail) in
 
     (* let a = [IMov(RegOffset(~-si, EBP), Reg(EAX))] in *)
     (* printf "store result of named_exp on stack \n%s\n" (to_asm a); *)
@@ -475,7 +474,8 @@ let compile_decl (d : tag adecl) : instruction list =
         that knowledge to prepare the environment for body to execute *)
         let (env, si_arg) = List.fold_left
         (fun ((env : arg envt), (si_arg : int)) (arg : string) ->
-             ((arg, RegOffset(si_arg, EBP))::env, si_arg + 1)
+             let new_binding_in_env = (arg, Sized(DWORD_PTR, RegOffset(si_arg, EBP))) in
+             (new_binding_in_env::env, si_arg + 1)
         )
         ([] , 2)
         (* There are two things between the first arg pushed by caller*)

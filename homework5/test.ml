@@ -105,32 +105,43 @@ let prog_err_48 = "let a = true, b = false in
 
 
 (* correct program examples are also important to test *)
-let prog_1 = "let x = 1 in x";;
-let prog_2 = "let x = 1, y = 2 in x + y";;
-let prog_3 = "let x = 1, y = 2, z = 3 in x + y + z";;
-let prog_4 = "let x = 1, y = 2 in let z = (x + y) in z";;
-let prog_5 = "let x = 1 in let y = x in let z = y in let w = x in x";;
-let prog_6 = "def foo(x, y):
+let prog_1 = "def foo(x, y):
                    (x + y)
                   foo(1, 2)";;
 
-let prog_7 = "def foo(x, y):
+let prog_2 = "def foo(x, y):
                    let z = x && !(y) in z
               let foo = false in foo(true, false) && foo";;
 
-let prog_8 = "def foo1(x, y):
+let prog_3 = "def foo1(x, y):
                   (x + y)
               def foo2(z, w):
                   let x = z + w, y = z - w in foo1(x + y, y - x)
-              (let x = 2, y = 3, foo1 = x, foo2 = y in foo1(x, y) + (foo1 * foo2)) + (let x = 2, y = x * 3, foo1 = x, foo2 = y in foo2(x, y))";;
+              (let x = 2, y = 3, foo1 = x, foo2 = y in foo1(x, y) + (foo1 * foo2)) +
+                (let x = 2, y = x * 3, foo1 = x, foo2 = y in foo2(x, y))";;
 
-let prog_9 = "def iftest():
+let prog_5 = "def foo1(x, y):
+                x + y
+              def foo2(x, y):
+               foo1(x, y)
+              foo2(3, 4)"
+
+let prog_4 = "def iftest():
                   true
               def ifthen():
                   iftest()
               def ifelse():
                   ifthen()
               if iftest(): ifthen() else: ifelse()";;
+
+
+let correct_programs = [
+  t "prog_1" prog_1 "3";
+  t "prog_2" prog_2 "false";
+  t "prog_3" prog_3 "3";
+  t "prog_5" prog_5 "7";
+]
+
 
 let multiple_well_formedness_errs = [
   (* tested for all errors but including error message for only the first err *)
@@ -227,19 +238,6 @@ let int_binary_op_tests = [
   ; t "t_int_binary_14" "sub1(1 * 2 + 3)" "4"
   ; t "t_int_binary_15" "sub1(1 * add1(2) + 3)" "5"
 ]
-
-let correct_programs = [
-    te "prog_1" prog_1 "Compiling programs not implemented yet";
-    te "prog_2" prog_2 "Compiling programs not implemented yet";
-    te "prog_3" prog_3 "Compiling programs not implemented yet";
-    te "prog_4" prog_4 "Compiling programs not implemented yet";
-    te "prog_5" prog_5 "Compiling programs not implemented yet";
-    te "prog_6" prog_6 "Compiling programs not implemented yet";
-    te "prog_7" prog_7 "Compiling programs not implemented yet";
-    te "prog_8" prog_8 "Compiling programs not implemented yet";
-    te "prog_9" prog_9 "Compiling programs not implemented yet";
-]
-
 let int_cmp_op_tests = [
   t "t_int_cmp_1" "1 < 2" "true"
   ; t "t_int_cmp_2" "1 > 2" "false"
@@ -435,7 +433,7 @@ let suite =
 @ arith_err_tests
 @ logical_err_tests
 @ let_and_if_err
-(* @ correct_programs *)
+@ correct_programs
 
 let () =
   run_test_tt_main suite
