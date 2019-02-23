@@ -216,13 +216,13 @@ let simple_well_formedness_err = [
 
  (* tests from homework 4 to test the standard non function body expressions *)
  let int_unary_op_tests = [
-  t "t_int_unary_1" "add1(5)" "6"
+  (* t "t_int_unary_1" "add1(5)" "6"
   ; t "t_int_unary_2" "sub1(5)" "4"
   ; t "t_int_unary_3" "add1(-5)" "-4"
-  ; t "t_int_unary_4" "sub1(-5)" "-6"
-  ; t "t_int_unary_5" "sub1(sub1(5))" "3"
-  ; t "t_int_unary_6" "add1(sub1(5))" "5"
-  ; t "t_int_unary_7" "sub1(add1(sub1(5)))" "4"
+  ; t "t_int_unary_4" "sub1(-5)" "-6" *)
+  t "t_int_unary_5" "sub1(sub1(5))" "3";
+  (* ; t "t_int_unary_6" "add1(sub1(5))" "5"
+  ; t "t_int_unary_7" "sub1(add1(sub1(5)))" "4" *)
 ]
 
 
@@ -427,10 +427,10 @@ let let_and_if_err = [
 
 let suite =
 "suite">:::
-  simple_well_formedness_err
-@ multiple_well_formedness_errs
-@ int_unary_op_tests
-@ int_binary_op_tests
+  (* simple_well_formedness_err
+@ multiple_well_formedness_errs *)
+int_unary_op_tests
+(* @ int_binary_op_tests
 @ bool_tests
 @ int_cmp_op_tests
 @ if_tests
@@ -438,7 +438,7 @@ let suite =
 @ arith_err_tests
 @ logical_err_tests
 @ let_and_if_err
-@ correct_programs
+@ correct_programs *)
 
 let () =
   run_test_tt_main suite

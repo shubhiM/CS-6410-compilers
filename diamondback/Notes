@@ -1,0 +1,6 @@
+1. All functions need to be in scope for forward references, need to add this to well formedness check in the compiler.
+2. Print primitive
+3. Integer overflow errors at runtime
+4. Piazza issue is something that needs to be taken care of
+5. Tail calls are good feature to implement
+6. Short circuiting in not implemented in our language.

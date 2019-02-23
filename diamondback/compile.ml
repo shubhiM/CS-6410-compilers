@@ -492,6 +492,7 @@ let compile_decl (d : tag adecl) : instruction list =
         stack_set_up @ body_ins @ stack_clean_up
 
 let compile_prog (anfed : tag aprogram) : string =
+  printf "Program string in anfed form HW5 \n%s\n" (string_of_aprogram anfed);
   let prelude =
     "section .text
      extern error
