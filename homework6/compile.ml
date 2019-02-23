@@ -341,126 +341,148 @@ let is_well_formed (p : sourcespan program) : sourcespan program fallible =
     match all_err with [] -> Ok p | _ -> Error all_err )
 
 let rec compile_fun (fun_name : string) args env is_tail : instruction list =
-   let push = List.map (fun (arg : tag immexpr) -> IPush(compile_imm arg env false)) (List.rev args) in
-   let call = [ICall fun_name] in
-   let clean = [IAdd (Reg ESP, Const(4 * (List.length args)))] in
-   push @ call @ clean
+  let push =
+    List.map
+      (fun (arg : tag immexpr) -> IPush (compile_imm arg env false))
+      (List.rev args)
+  in
+  let call = [ICall fun_name] in
+  let clean = [IAdd (Reg ESP, Const (4 * List.length args))] in
+  push @ call @ clean
+
 and compile_aexpr (e : tag aexpr) (si : int) (env : arg envt) (num_args : int)
     (is_tail : bool) : instruction list =
-    match e with
-       | ALet(id, id_exp, body, tag) ->
-         let compiled_named_expr = (compile_cexpr id_exp (si + 1) env num_args false) in
-         let compiled_body = (compile_aexpr body (si + 1) ((id, Sized(DWORD_PTR, RegOffset(~-si, EBP)))::env) num_args is_tail) in
-         compiled_named_expr @ [IMov(RegOffset(~-si, EBP), Reg(EAX))] @ compiled_body
-       | ACExpr(cexp) ->
-          (compile_cexpr cexp si env num_args is_tail)
+  match e with
+  | ALet (id, id_exp, body, tag) ->
+      let compiled_named_expr =
+        compile_cexpr id_exp (si + 1) env num_args false
+      in
+      let compiled_body =
+        compile_aexpr body (si + 1)
+          ((id, Sized (DWORD_PTR, RegOffset (~-si, EBP))) :: env)
+          num_args is_tail
+      in
+      compiled_named_expr
+      @ [IMov (RegOffset (~-si, EBP), Reg EAX)]
+      @ compiled_body
+  | ACExpr cexp -> compile_cexpr cexp si env num_args is_tail
+
 and compile_cexpr (e : tag cexpr) si env num_args is_tail =
-  let assert_arith_num = [ITest (Reg(EAX), Const(1)); IJne ("err_ARITH_NOT_NUM")] in
-  let assert_cmp_num = [ITest (Reg(EAX), Const(1)); IJne ("err_COMP_NOT_NUM")] in
-  let assert_logic_not_bool = [ITest (Reg(EAX), Const(1)); IJe ("err_LOGIC_NOT_BOOL")] in
-  let assert_if_not_bool = [ITest (Reg(EAX), Const(1)); IJe ("err_IF_NOT_BOOL")] in
+  let assert_arith_num =
+    [ITest (Reg EAX, Const 1); IJne "err_ARITH_NOT_NUM"]
+  in
+  let assert_cmp_num = [ITest (Reg EAX, Const 1); IJne "err_COMP_NOT_NUM"] in
+  let assert_logic_not_bool =
+    [ITest (Reg EAX, Const 1); IJe "err_LOGIC_NOT_BOOL"]
+  in
+  let assert_if_not_bool = [ITest (Reg EAX, Const 1); IJe "err_IF_NOT_BOOL"] in
   (* TODO: add assertions to check for integer overflow conditions *)
   let assert_overflow = [] in
   (* helper function to compile the type predicates like is_bool and is_num *)
   let compile_type_predicates (typ : string) (tag : int) : instruction list =
     let number_label = sprintf "isnumber_%d" tag in
     let done_label = sprintf "done_%d" tag in
-    let prelude = [ITest (Reg EAX, Const(1)); IJe number_label] in
-    let type_ins = match typ with
-       | "bool" -> [IMov (Reg EAX, const_true); IJmp done_label;
-                    ILabel number_label; IMov (Reg EAX, const_false);
-                    ILabel done_label]
-       | "number" -> [IMov (Reg EAX, const_false); IJmp done_label;
-                      ILabel number_label; IMov (Reg EAX, const_true);
-                      ILabel done_label]
-       | _ -> failwith "Unsupported type"
-       in
-       prelude @ type_ins
+    let prelude = [ITest (Reg EAX, Const 1); IJe number_label] in
+    let type_ins =
+      match typ with
+      | "bool" ->
+          [ IMov (Reg EAX, const_true)
+          ; IJmp done_label
+          ; ILabel number_label
+          ; IMov (Reg EAX, const_false)
+          ; ILabel done_label ]
+      | "number" ->
+          [ IMov (Reg EAX, const_false)
+          ; IJmp done_label
+          ; ILabel number_label
+          ; IMov (Reg EAX, const_true)
+          ; ILabel done_label ]
+      | _ -> failwith "Unsupported type"
     in
-    let compile_bin_ops (v1 : arg) (v2 : arg) (si : int) (asserts : instruction list) (ops : instruction list) : instruction list =
-      [IMov (Reg EAX, v1)]
-      @ asserts
-      @ [IMov (RegOffset(~-si, EBP), Reg EAX); IMov (Reg EAX, v2)]
-      @ asserts
-      @ [IMov (Reg EAX, RegOffset(~-si, EBP))]
-      @ ops
+    prelude @ type_ins
+  in
+  let compile_bin_ops (v1 : arg) (v2 : arg) (si : int)
+      (asserts : instruction list) (ops : instruction list) : instruction list
+      =
+    [IMov (Reg EAX, v1)]
+    @ asserts
+    @ [IMov (RegOffset (~-si, EBP), Reg EAX); IMov (Reg EAX, v2)]
+    @ asserts
+    @ [IMov (Reg EAX, RegOffset (~-si, EBP))]
+    @ ops
+  in
+  let compile_cmp_expr (op : string) (si : int) (tag : int) (l : arg) (r : arg)
+      : instruction list =
+    let op_label = sprintf "%s_%d" op tag in
+    let done_label = sprintf "done_%d" tag in
+    let prelude =
+      [IMov (Reg EAX, l)]
+      @ assert_cmp_num
+      @ [IMov (RegOffset (~-si, EBP), Reg EAX); IMov (Reg EAX, r)]
+      @ assert_cmp_num
+      @ [IMov (Reg EAX, RegOffset (~-si, EBP))]
+      @ [ICmp (Reg EAX, r); IMov (Reg EAX, const_true)]
     in
-    let compile_cmp_expr (op : string) (si : int) (tag : int) (l : arg) (r : arg) : instruction list =
-      let op_label = sprintf "%s_%d" op tag in
-      let done_label = sprintf "done_%d" tag in
-      let prelude =  [IMov (Reg EAX, l)] @
-                      assert_cmp_num @
-                      [IMov (RegOffset(~-si, EBP), Reg EAX); IMov (Reg EAX, r)] @
-                      assert_cmp_num @
-                      [IMov (Reg EAX, RegOffset(~-si, EBP))] @
-                      [ICmp (Reg EAX, r); IMov (Reg EAX, const_true)]
-      in
-      let suffix = [IMov (Reg EAX, const_false);
-                    IJmp done_label;
-                    ILabel op_label;
-                    ILabel done_label
-                    ]
-      in
-      let body = match op with
-                   | "greater" -> [IJg op_label]
-                   | "greater_eq" -> [IJge op_label]
-                   | "less" -> [IJl op_label]
-                   | "less_eq" -> [IJle op_label]
-                   | "eq" -> [IJe op_label]
-                   | _ -> failwith "Unsupported comparison operator used"
-      in
-      prelude @ body @ suffix
+    let suffix =
+      [ IMov (Reg EAX, const_false)
+      ; IJmp done_label
+      ; ILabel op_label
+      ; ILabel done_label ]
     in
-    match e with
-    | CImmExpr(imm) -> [IMov(Reg(EAX), compile_imm imm env is_tail)]
-    | CPrim1(op, e, tag) ->
-      let compiled_e = [IMov(Reg(EAX), compile_imm e env false)] in
-      (match op with
-        | Add1 -> compiled_e @ assert_arith_num @ [IAdd (Reg EAX, Const 2)]
-        | Sub1 -> compiled_e @ assert_arith_num @ [ISub (Reg EAX, Const 2)]
-        | Not -> compiled_e @ assert_logic_not_bool @ [IXor (Reg EAX, bool_mask)]
-        | IsBool -> compiled_e @ compile_type_predicates "bool" tag
-        | IsNum  -> compiled_e @ compile_type_predicates "number" tag
-        | Print -> failwith "Print is not implemented yet"
-        | PrintStack -> failwith "PrintStack is not implemented yet"
-        | _ -> failwith "Illegal expression!")
-    | CPrim2(op, e1, e2, tag) ->
+    let body =
+      match op with
+      | "greater" -> [IJg op_label]
+      | "greater_eq" -> [IJge op_label]
+      | "less" -> [IJl op_label]
+      | "less_eq" -> [IJle op_label]
+      | "eq" -> [IJe op_label]
+      | _ -> failwith "Unsupported comparison operator used"
+    in
+    prelude @ body @ suffix
+  in
+  match e with
+  | CImmExpr imm -> [IMov (Reg EAX, compile_imm imm env is_tail)]
+  | CPrim1 (op, e, tag) -> (
+      let compiled_e = [IMov (Reg EAX, compile_imm e env false)] in
+      match op with
+      | Add1 -> compiled_e @ assert_arith_num @ [IAdd (Reg EAX, Const 2)]
+      | Sub1 -> compiled_e @ assert_arith_num @ [ISub (Reg EAX, Const 2)]
+      | Not -> compiled_e @ assert_logic_not_bool @ [IXor (Reg EAX, bool_mask)]
+      | IsBool -> compiled_e @ compile_type_predicates "bool" tag
+      | IsNum -> compiled_e @ compile_type_predicates "number" tag
+      | Print -> failwith "Print is not implemented yet"
+      | PrintStack -> failwith "PrintStack is not implemented yet"
+      | _ -> failwith "Illegal expression!" )
+  | CPrim2 (op, e1, e2, tag) -> (
       let v1 = compile_imm e1 env false in
       let v2 = compile_imm e2 env false in
-      (match op with
-        | Plus ->
-          (compile_bin_ops v1 v2 si assert_arith_num [IAdd(Reg EAX, v2)])
-        | Minus ->
-          (compile_bin_ops v1 v2 si assert_arith_num [ISub(Reg EAX, v2)])
-        | Times ->
-          (compile_bin_ops v1 v2 si assert_arith_num [IMul(Reg EAX, v2); ISar(Reg EAX, Const(1))])
-        | And ->
-          (compile_bin_ops v1 v2 si assert_logic_not_bool [IAnd(Reg(EAX), v2)])
-        | Or ->
-          (compile_bin_ops v1 v2 si assert_logic_not_bool [IOr(Reg EAX, v2)])
-        | Greater ->
-          (compile_cmp_expr "greater" si tag v1 v2)
-        | GreaterEq ->
-          (compile_cmp_expr "greater_eq" si tag v1 v2)
-        | Less ->
-          (compile_cmp_expr "less" si tag v1 v2)
-        | LessEq ->
-          (compile_cmp_expr "less_eq" si tag v1 v2)
-        | Eq ->
-          (compile_cmp_expr "eq" si tag v1 v2)
-        | _ -> failwith "Illegal expression!")
-    | CIf(cond, thn, els, tag) ->
-        let else_label = sprintf "if_false_%d" tag in
-        let done_label = sprintf "done_%d" tag in
-         [IMov(Reg(EAX), compile_imm cond env false)]
-         @ assert_if_not_bool
-         @ [ICmp (Reg EAX, const_false); IJe else_label]
-         @ (compile_aexpr thn si env num_args is_tail)
-         @ [IJmp done_label; ILabel else_label]
-         @ (compile_aexpr els si env num_args is_tail)
-         @ [ILabel done_label]
-    | CApp(funname, args, tag) ->
-      (compile_fun funname args env is_tail)
+      match op with
+      | Plus -> compile_bin_ops v1 v2 si assert_arith_num [IAdd (Reg EAX, v2)]
+      | Minus -> compile_bin_ops v1 v2 si assert_arith_num [ISub (Reg EAX, v2)]
+      | Times ->
+          compile_bin_ops v1 v2 si assert_arith_num
+            [IMul (Reg EAX, v2); ISar (Reg EAX, Const 1)]
+      | And ->
+          compile_bin_ops v1 v2 si assert_logic_not_bool [IAnd (Reg EAX, v2)]
+      | Or -> compile_bin_ops v1 v2 si assert_logic_not_bool [IOr (Reg EAX, v2)]
+      | Greater -> compile_cmp_expr "greater" si tag v1 v2
+      | GreaterEq -> compile_cmp_expr "greater_eq" si tag v1 v2
+      | Less -> compile_cmp_expr "less" si tag v1 v2
+      | LessEq -> compile_cmp_expr "less_eq" si tag v1 v2
+      | Eq -> compile_cmp_expr "eq" si tag v1 v2
+      | _ -> failwith "Illegal expression!" )
+  | CIf (cond, thn, els, tag) ->
+      let else_label = sprintf "if_false_%d" tag in
+      let done_label = sprintf "done_%d" tag in
+      [IMov (Reg EAX, compile_imm cond env false)]
+      @ assert_if_not_bool
+      @ [ICmp (Reg EAX, const_false); IJe else_label]
+      @ compile_aexpr thn si env num_args is_tail
+      @ [IJmp done_label; ILabel else_label]
+      @ compile_aexpr els si env num_args is_tail
+      @ [ILabel done_label]
+  | CApp (funname, args, tag) -> compile_fun funname args env is_tail
+
 and compile_imm e env is_tail =
   match e with
   | ImmNum (n, _) -> Const (n lsl 1)
@@ -480,104 +502,93 @@ let compile_decl (d : tag adecl) : instruction list =
   7. restore ebp from stack to caller's ebp
   8. return
   *)
-  match d with
-    | ADFun(funname, args, body, tag) ->
-          let n_locals = (count_vars body) in
-          let stack_set_up = [
-           ILabel(funname);
-           ILineComment("-----stack setup-----");
-           IPush (Reg(EBP));
-           IMov (Reg(EBP), Reg(ESP));
-           (* 16 byte allignment for mac os *)
-           ISub(Reg(ESP), Const((4*n_locals/16+1)*16));
-           ILineComment("-----compiled code-----");
-         ]
-         in
-         let stack_clean_up = [
-           ILineComment("-----stack clean up-----");
-           IMov(Reg(ESP), Reg(EBP));
-           IPop(Reg(EBP));
-           IRet;
-         ]
-         in
-         let num_args = List.length args in
-         (* we know how caller must have pushed the arguments on the stack, we use
+  match d with ADFun (funname, args, body, tag) ->
+    let n_locals = count_vars body in
+    let stack_set_up =
+      [ ILabel funname
+      ; ILineComment "-----stack setup-----"
+      ; IPush (Reg EBP)
+      ; IMov (Reg EBP, Reg ESP)
+      ; (* 16 byte allignment for mac os *)
+        ISub (Reg ESP, Const (((4 * n_locals / 16) + 1) * 16))
+      ; ILineComment "-----compiled code-----" ]
+    in
+    let stack_clean_up =
+      [ ILineComment "-----stack clean up-----"
+      ; IMov (Reg ESP, Reg EBP)
+      ; IPop (Reg EBP)
+      ; IRet ]
+    in
+    let num_args = List.length args in
+    (* we know how caller must have pushed the arguments on the stack, we use
          that knowledge to prepare the environment for body to execute *)
-         let (env, si_arg) = List.fold_left
-         (fun ((env : arg envt), (si_arg : int)) (arg : string) ->
-              let new_binding_in_env = (arg, Sized(DWORD_PTR, RegOffset(si_arg, EBP))) in
-              (new_binding_in_env::env, si_arg + 1)
-         )
-         ([] , 2)
-         (* There are two things between the first arg pushed by caller*)
-         (* EBP currently points to the new call stack *)
-         args
-         in
-         let si_local = 1 in
-         (* body is the last thing that we compile and hence its in the tail position. *)
-         let body_ins = (compile_aexpr body si_local env num_args true) in
-         stack_set_up @ body_ins @ stack_clean_up
+    let env, si_arg =
+      List.fold_left
+        (fun ((env : arg envt), (si_arg : int)) (arg : string) ->
+          let new_binding_in_env =
+            (arg, Sized (DWORD_PTR, RegOffset (si_arg, EBP)))
+          in
+          (new_binding_in_env :: env, si_arg + 1) )
+        ([], 2)
+        (* There are two things between the first arg pushed by caller*)
+        (* EBP currently points to the new call stack *)
+        args
+    in
+    let si_local = 1 in
+    (* body is the last thing that we compile and hence its in the tail position. *)
+    let body_ins = compile_aexpr body si_local env num_args true in
+    stack_set_up @ body_ins @ stack_clean_up
 
 let compile_prog (anfed : tag aprogram) : string =
   (* printf "Program string in anfed form HW6 \n%s\n" (string_of_aprogram anfed); *)
-  let prelude =
-    "section .text
-     extern error
-     extern print"
-  in
-  match anfed with
-    | AProgram(funs, main, tag) ->
-        (* treating the body of the program as the main entrypoint function *)
-        (* printf "Program -  %s\n" (string_of_aprogram anfed); *)
-        let main_fun = ADFun("our_code_starts_here", [], main, tag) in
-        let all_decls = funs @ [main_fun] in
-        let compiled_decls = List.fold_left
-        (fun (compiled_exp : string) (ADFun(funname, args, body, tag) as d : tag adecl) ->
-              let prelude = "global " ^ funname in
-              compiled_exp ^ prelude ^ (to_asm (compile_decl d)) ^ "\n"
-        )
-        ""
-        all_decls
-        in
-        (* let err_COMP_NOT_NUM   = 0
+  let prelude = "section .text\n     extern error\n     extern print" in
+  match anfed with AProgram (funs, main, tag) ->
+    (* treating the body of the program as the main entrypoint function *)
+    (* printf "Program -  %s\n" (string_of_aprogram anfed); *)
+    let main_fun = ADFun ("our_code_starts_here", [], main, tag) in
+    let all_decls = funs @ [main_fun] in
+    let compiled_decls =
+      List.fold_left
+        (fun (compiled_exp : string)
+             (ADFun (funname, args, body, tag) as d : tag adecl) ->
+          let prelude = "global " ^ funname in
+          compiled_exp ^ prelude ^ to_asm (compile_decl d) ^ "\n" )
+        "" all_decls
+    in
+    (* let err_COMP_NOT_NUM   = 0
         let err_ARITH_NOT_NUM  = 1
         let err_LOGIC_NOT_BOOL = 2
         let err_IF_NOT_BOOL    = 3
         let err_OVERFLOW       = 4 *)
-        let postlude = [
-            ILineComment("-----errors-----");
-            ILabel ("err_ARITH_NOT_NUM");
-            IPush (Reg(EAX));
-            IPush (Const(err_ARITH_NOT_NUM));
-            ICall "error";
-            IAdd (Reg(ESP), Const(8));
-
-            ILabel ("err_LOGIC_NOT_BOOL");
-            IPush (Reg(EAX));
-            IPush (Const(err_LOGIC_NOT_BOOL));
-            ICall "error";
-            IAdd (Reg(ESP), Const(8));
-
-            ILabel ("err_IF_NOT_BOOL");
-            IPush (Reg(EAX));
-            IPush (Const(err_IF_NOT_BOOL));
-            ICall "error";
-            IAdd (Reg(ESP), Const(8));
-
-            ILabel ("err_COMP_NOT_NUM");
-            IPush (Reg(EAX));
-            IPush (Const(err_COMP_NOT_NUM));
-            ICall "error";
-            IAdd (Reg(ESP), Const(8));
-
-            ILabel ("err_OVERFLOW");
-            IPush (Reg(EAX));
-            IPush (Const(err_OVERFLOW));
-            ICall "error";
-            IAdd (Reg(ESP), Const(8));
-        ]
-        in
-        sprintf "%s\n%s\n%s\n" prelude compiled_decls (to_asm postlude)
+    let postlude =
+      [ ILineComment "-----errors-----"
+      ; ILabel "err_ARITH_NOT_NUM"
+      ; IPush (Reg EAX)
+      ; IPush (Const err_ARITH_NOT_NUM)
+      ; ICall "error"
+      ; IAdd (Reg ESP, Const 8)
+      ; ILabel "err_LOGIC_NOT_BOOL"
+      ; IPush (Reg EAX)
+      ; IPush (Const err_LOGIC_NOT_BOOL)
+      ; ICall "error"
+      ; IAdd (Reg ESP, Const 8)
+      ; ILabel "err_IF_NOT_BOOL"
+      ; IPush (Reg EAX)
+      ; IPush (Const err_IF_NOT_BOOL)
+      ; ICall "error"
+      ; IAdd (Reg ESP, Const 8)
+      ; ILabel "err_COMP_NOT_NUM"
+      ; IPush (Reg EAX)
+      ; IPush (Const err_COMP_NOT_NUM)
+      ; ICall "error"
+      ; IAdd (Reg ESP, Const 8)
+      ; ILabel "err_OVERFLOW"
+      ; IPush (Reg EAX)
+      ; IPush (Const err_OVERFLOW)
+      ; ICall "error"
+      ; IAdd (Reg ESP, Const 8) ]
+    in
+    sprintf "%s\n%s\n%s\n" prelude compiled_decls (to_asm postlude)
 
 (* Feel free to add additional phases to your pipeline.
    The final pipeline phase needs to return a string,
