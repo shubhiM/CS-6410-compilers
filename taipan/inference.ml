@@ -21,7 +21,7 @@ let print_subst subst =
 
 
 let dummy_span = (Lexing.dummy_pos, Lexing.dummy_pos)
-             
+
 let tInt = TyCon("Int", dummy_span)
 let tBool = TyCon("Bool", dummy_span)
 let intint2int = SForall([], TyArr([tInt; tInt], tInt, dummy_span), dummy_span)
@@ -65,6 +65,7 @@ let apply_subst_subst (subst : 'a typ subst) (dest : 'a typ subst) : 'a typ subs
 let compose_subst (sub1 : 'a typ subst) (sub2 : 'a typ subst) : 'a typ subst =
   sub1 @ (apply_subst_subst sub1 sub2)
 ;;
+
 let rec ftv_type (t : 'a typ) : StringSet.t =
   match t with
   | TyBlank _ -> StringSet.empty
@@ -83,7 +84,7 @@ let ftv_scheme (s : 'a scheme) : StringSet.t =
   match s with
   | SForall(args, typ, _) ->
      StringSet.diff (ftv_type typ) (StringSet.of_list args)
-let ftv_env (e : 'a typ envt) : StringSet.t = 
+let ftv_env (e : 'a typ envt) : StringSet.t =
   failwith "Compute the free type variables of an environment here"
 ;;
 let occurs (name : string) (t : 'a typ) =
@@ -101,8 +102,8 @@ let bind (tyvarname : string) (t : 'a typ) : 'a typ subst =
 let ty_err t1 t2 loc reasons = TypeMismatch(loc, t2, t1, reasons)
 let rec unify (t1 : 'a typ) (t2 : 'a typ) (loc : sourcespan) (reasons : reason list) : 'a typ subst =
   failwith "Implement type unification"
-;;     
-     
+;;
+
 let gensym =
   let count = ref 0 in
   let next () =
@@ -131,9 +132,41 @@ let generalize (e : 'a typ envt) (t : 'a typ) : 'a scheme =
 ;;
 
 (* Ex 14 *)
+
+let tInt = TyCon("Int", dummy_sourcespan);;
+
+let tBool = TyCon("Bool", dummy_sourcespan);;
+
 let rec infer_exp (funenv : sourcespan scheme envt) (env : sourcespan typ envt) (e : sourcespan expr) reasons
-        : (sourcespan typ subst * sourcespan typ * sourcespan expr) (* unification, result typ, rebuilt expr *)=
+        : (sourcespan typ subst * sourcespan typ * sourcespan expr) (* unification, result typ, rebuilt expr *) =
   match e with
+  | ENumber _ -> ([], tInt, e)
+  | EBool _ -> ([], tBool, e)
+  | EId(x, _) -> ([], (find x env), e)
+  | EPrim1(op1, e1, loc) ->
+      let op1_scheme = find (string_of_op2) funenv in
+      let op1_type = match op1_scheme with
+        | SForall([], tp, _) -> tp
+        | SForall([x],tp, -) -> instantiate(op1_scheme)
+        | _ -> failwith "Internal compiler error, prim 1 expects atmost 1 type variable."
+      in
+      let (input_subst, input_type, input_expr) = (infer_exp funenv env e1 reasons) in
+      let output_type = TyVar(gensym "prim1result", loc) in
+      let intermediate_type = TyArrow([input_type], output_type, loc) in
+      let subs =  (unify intermediate_type op1_type loc reasons) in
+      let final_subs = (* TODO: do a compose of all the subs *) [] in
+      let final_type = (apply_subst_typ subs intermediate_type)
+      (final_subs, final_type, e1)
+  | EPrim2(op2, e1, e2, loc) ->
+          let op2_scheme = find (name_of_op2 op2) funenv in
+          let (e1_subst, e1_type, e1_expr) = (infer_exp funenv env e1 reasons) in
+          let (e2_subst, e2_type, e2_expr) = (infer_exp funenv env e2 reasons) in
+          let output_type = TyVar(gensym "prim2result", loc) in
+          let intermediate_type = TyArrow([e1_type, e2_type], output_type, loc) in
+
+
+  | ELet(bindings, body, _) ->
+  | EApp(funname, args, _) ->
   | EIf(c, t, f, loc) ->
      let (c_subst, c_typ, c) = infer_exp funenv env c reasons in
      let (t_subst, t_typ, t) = infer_exp funenv env t reasons in
