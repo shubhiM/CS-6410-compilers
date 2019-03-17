@@ -427,10 +427,10 @@ let let_and_if_err = [
 
 let suite =
 "suite">:::
-  (* simple_well_formedness_err
-@ multiple_well_formedness_errs *)
-int_unary_op_tests
-(* @ int_binary_op_tests
+  simple_well_formedness_err
+@ multiple_well_formedness_errs
+@ int_unary_op_tests
+@ int_binary_op_tests
 @ bool_tests
 @ int_cmp_op_tests
 @ if_tests
@@ -438,7 +438,7 @@ int_unary_op_tests
 @ arith_err_tests
 @ logical_err_tests
 @ let_and_if_err
-@ correct_programs *)
+@ correct_programs 
 
 let () =
   run_test_tt_main suite
