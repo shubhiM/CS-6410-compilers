@@ -7,7 +7,7 @@ open Errors
 (* Add at least one of these two *)
 (* open TypeCheck *)
 (* open Inference *)
-       
+
 type 'a envt = (string * 'a) list
 
 let rec is_anf (e : 'a expr) : bool =
@@ -146,7 +146,9 @@ let rename_and_tag (p : tag program) : tag program =
 
 (* IMPLEMENT EVERYTHING BELOW *)
 
-
+(* Note: Desugaring of tuple bindings and sequences happens before anfing.
+   As a result of this, we do not have sequences present during anfing.
+*)
 let anf (p : tag program) : unit aprogram =
   let rec helpP (p : tag program) : unit aprogram =
     match p with
@@ -161,7 +163,7 @@ let anf (p : tag program) : unit aprogram =
                       | BName(a, _, _) -> a
                       | _ -> raise (NotYetImplemented("Finish this"))) args in
        ADFun(name, args, helpA body, ())
-  and helpC (e : tag expr) : (unit cexpr * (string * unit cexpr) list) = 
+  and helpC (e : tag expr) : (unit cexpr * (string * unit cexpr) list) =
     match e with
     | EAnnot(e, _, _) -> helpC e
     | EPrim1(op, arg, _) ->
@@ -175,15 +177,31 @@ let anf (p : tag program) : unit aprogram =
        let (cond_imm, cond_setup) = helpI cond in
        (CIf(cond_imm, helpA _then, helpA _else, ()), cond_setup)
     | ELet([], body, _) -> helpC body
-    | ELet(_::_, body, _) -> raise (NotYetImplemented "Finish this")
-    (* | ELet(((bind, _, _), exp, _)::rest, body, pos) ->
-     *    let (exp_ans, exp_setup) = helpC exp in
-     *    let (body_ans, body_setup) = helpC (ELet(rest, body, pos)) in
-     *    (body_ans, exp_setup @ [(bind, exp_ans)] @ body_setup) *)
+    | ELet((bind, exp, pos)::rest, body, _) ->
+        let name = match bind with
+          | BBlank(_) -> "_"
+          | BName(name, _, _) -> name
+          | BTuple(_, _) ->
+            raise (InternalCompilerError "Anfing Let failed : found tuple bindings")
+         in
+         let (exp_ans, exp_setup) = helpC exp in
+         let (body_ans, body_setup) = helpC body in
+         (body_ans, exp_setup @ [(name, exp_ans)] @ body_setup)
     | EApp(funname, args, _) ->
        let (new_args, new_setup) = List.split (List.map helpI args) in
        (CApp(funname, new_args, ()), List.concat new_setup)
-    (* NOTE: You may need more cases here, for sequences and tuples *)
+    | ETuple (exprs, _) ->
+      let (new_exprs, new_setup) = List.split (List.map helpI exprs) in
+      (CTuple(new_exprs, ()), List.concat new_setup)
+    | EGetItem (exp, index, _, _) ->
+       let (exp_ans, exp_setup) = helpI exp in
+       (CGetItem(exp_ans, index, ()), exp_setup)
+    | ESetItem (exp, index, _, value, _) ->
+      let (exp_ans, exp_setup) = helpI exp in
+      let (value_ans, value_setup) = helpI value in
+      (CSetItem(exp_ans, index, value_ans, ()), exp_setup @ value_setup)
+    | ESeq (_, _, _) ->
+      raise (InternalCompilerError "Anfing failed : Seq cannot be anfed")
     | _ -> let (imm, setup) = helpI e in (CImmExpr imm, setup)
 
   and helpI (e : tag expr) : (unit immexpr * (string * unit cexpr) list) =
@@ -191,8 +209,8 @@ let anf (p : tag program) : unit aprogram =
     | ENumber(n, _) -> (ImmNum(n, ()), [])
     | EBool(b, _) -> (ImmBool(b, ()), [])
     | EId(name, _) -> (ImmId(name, ()), [])
+    | ENil(_, _) -> (ImmNil(()), [])
     | EAnnot(e, _, _) -> helpI e
-
     | EPrim1(op, arg, tag) ->
        let tmp = sprintf "unary_%d" tag in
        let (arg_imm, arg_setup) = helpI arg in
@@ -211,13 +229,32 @@ let anf (p : tag program) : unit aprogram =
        let (new_args, new_setup) = List.split (List.map helpI args) in
        (ImmId(tmp, ()), (List.concat new_setup) @ [(tmp, CApp(funname, new_args, ()))])
     | ELet([], body, _) -> helpI body
-    | ELet(_::_, body, _) -> raise (NotYetImplemented "Finish this")
-    (* | ELet(((bind, _, _), exp, _)::rest, body, pos) ->
-     *    let (exp_ans, exp_setup) = helpC exp in
-     *    let (body_ans, body_setup) = helpI (ELet(rest, body, pos)) in
-     *    (body_ans, exp_setup @ [(bind, exp_ans)] @ body_setup) *)
-    | _ -> raise (NotYetImplemented "Finish the remaining cases")
-  and helpA e : unit aexpr = 
+    | ELet((bind, exp, pos)::rest, body, _) ->
+      let name = match bind with
+        | BBlank(_) -> "_"
+        | BName(name, _, _) -> name
+        | BTuple(_, _) ->
+          raise (InternalCompilerError "Anfing Let failed : found tuple bindings")
+       in
+       let (exp_ans, exp_setup) = helpC exp in
+       let (body_ans, body_setup) = helpI (ELet(rest, body, pos)) in
+       (body_ans, exp_setup @ [(name, exp_ans)] @ body_setup)
+    | ETuple (exprs, tag) ->
+      let (new_exprs, new_setup) = List.split (List.map helpI exprs) in
+      let tmp = sprintf "tuple_%d" tag in
+      (ImmId(tmp, ()), (List.concat new_setup) @ [(tmp, CTuple(new_exprs, ()))])
+    | EGetItem (exp, index, _, tag) ->
+       let (exp_ans, exp_setup) = helpI exp in
+       let tmp = sprintf "tuple_get_%d" tag in
+       (ImmId(tmp, ()), exp_setup @ [(tmp, CGetItem(exp_ans, index, ()))])
+    | ESetItem (exp, index, _, value, tag) ->
+      let (exp_ans, exp_setup) = helpI exp in
+      let (value_ans, value_setup) = helpI value in
+      let tmp = sprintf "tuple_set_%d" tag in
+      (ImmId(tmp, ()), exp_setup @ [(tmp, CSetItem(exp_ans, index, value_ans, ()))])
+    | ESeq (_, _, _) ->
+      raise (InternalCompilerError "Anfing failed : Seq cannot be anfed")
+  and helpA e : unit aexpr =
     let (ans, ans_setup) = helpC e in
     List.fold_right (fun (bind, exp) body -> ALet(bind, exp, body, ())) ans_setup (ACExpr ans)
   in
@@ -293,7 +330,7 @@ let compile_prog (anfed : tag aprogram) : string =
   | AProgram(decls, body, _) ->
      let comp_decls = raise (NotYetImplemented "... do stuff with decls ...") in
      let (body_prologue, comp_body, body_epilogue) = raise (NotYetImplemented "... do stuff with body ...") in
-     
+
      let heap_start = [
          ILineComment("heap start");
          IInstrComment(IMov(Reg(ESI), RegOffset(4, ESP)), "Load ESI with our argument, the heap pointer");
@@ -301,7 +338,7 @@ let compile_prog (anfed : tag aprogram) : string =
          IInstrComment(IAnd(Reg(ESI), HexConst(0xFFFFFFF8)), "by adding no more than 7 to it")
        ] in
      let main = to_asm (body_prologue @ heap_start @ comp_body @ body_epilogue) in
-     
+
      raise (NotYetImplemented "... combine comp_decls and main with any needed extra setup and error handling ...")
 
 (* Feel free to add additional phases to your pipeline.
