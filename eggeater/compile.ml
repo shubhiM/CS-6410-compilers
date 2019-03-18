@@ -261,7 +261,6 @@ let anf (p : tag program) : unit aprogram =
   helpP p
 ;;
 
-
 let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
   let rec wf_E (e : sourcespan expr) (* other parameters may be needed here *) =
     Error([NotYetImplemented "Implement well-formedness checking for expressions"])
@@ -281,32 +280,82 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
      Error([NotYetImplemented "Implement well-formedness checking for programs"])
 ;;
 
-
 let desugar (p : sourcespan program) : sourcespan program =
   let gensym =
     let next = ref 0 in
     (fun name ->
       next := !next + 1;
       sprintf "%s_%d" name (!next)) in
-  let rec helpE (e : sourcespan expr) (* other parameters may be needed here *) =
-    Error([NotYetImplemented "Implement desugaring for expressions"])
-  and helpD (d : sourcespan decl) (* other parameters may be needed here *) =
-    Error([NotYetImplemented "Implement desugaring for definitions"])
+  let rec helpB tuple tag bind bound_body : sourcespan expr = (* helper to desugar tuple bind *)
+    (let size = List.length tuple in
+      let (bdy, _) = List.fold_right
+        (fun b (body, index) ->
+          match b with
+          | BName(name, typ, tag) ->
+            let tuple_id = EId(bind, tag) in
+            (ELet([(b, EGetItem(tuple_id, index, size, tag), tag)], body, tag), index - 1)
+          | BTuple(names, tag) -> (helpB names tag (gensym "bind") body, index - 1)
+          | _ -> raise (InternalCompilerError "Desugaring failed, found blank bind ")
+        )
+        tuple
+        (bound_body, size - 1)
+        in
+    bdy)
+  in
+  let rec helpE (e : sourcespan expr) =
+    match e with
+    | ENumber(_, _) -> e
+    | EBool(_, _) -> e
+    | ENil(_, _) -> e
+    | EId(_, _) -> e
+    | ETuple(exprs , tag) -> ETuple(List.map helpE exprs, tag)
+    | EGetItem(expr, i, n, tag) -> EGetItem(helpE expr, i, n, tag)
+    | ESetItem(e1, i, n, e2, tag) -> ESetItem(helpE e1, i, n, helpE e2, tag)
+    | EApp(name, args, tag) -> EApp(name, List.map helpE args, tag)
+    | EAnnot(expr, _typ, tag) -> EAnnot(helpE expr, _typ, tag)
+    | EPrim1(_prim1, expr, tag) -> EPrim1(_prim1, helpE expr, tag)
+    | EPrim2(_prim2, e1, e2, tag) -> EPrim2(_prim2, helpE e1, helpE e2, tag)
+    | EIf(cond, _then, _else , tag) -> EIf(helpE cond, helpE _then, helpE _else, tag)
+    | ESeq(e1, e2, tag) -> ELet([(BBlank(TyBlank tag, tag), helpE e1, tag)], helpE e2, tag)
+    | ELet(bindings, body, tag) ->
+        List.fold_right
+          (fun (b, exp, tag) body ->
+            match b with
+              | BTuple(tuple,  tag) ->
+                  let bound_name = gensym "bind" in
+                  let bound_body = (helpB tuple tag bound_name body) in
+                  ELet([(BName (bound_name, TyBlank tag, tag), helpE exp, tag)], bound_body, tag)
+              | _ -> ELet([(b, helpE exp, tag)], body, tag)
+         )
+        bindings
+        (helpE body)
+  and helpD (d : sourcespan decl) =
+      match d with
+        | DFun(funname, binds, scheme, body, tag) ->
+          let (body, args) = List.fold_right
+            (fun b (body, args) ->
+              match b with
+                | BTuple(tuple,  tag) ->
+                    let bind = gensym "bind" in
+                    (helpB tuple tag bind body, BName(bind, TyBlank tag, tag)::args)
+                | _ -> (body, b::args))
+            binds
+            (helpE body, [])
+            in
+            DFun(funname, args, scheme, body, tag)
   and helpG (g : sourcespan decl list) (* other parameters may be needed here *) =
-    Error([NotYetImplemented "Implement desugaring for definition groups"])
-  and helpT (t : sourcespan typ) (* other parameters may be needed here *) =
+      List.map helpD g
+  (* and helpT (t : sourcespan typ) (* other parameters may be needed here *) =
     Error([NotYetImplemented "Implement desugaring for types"])
   and helpS (s : sourcespan scheme) (* other parameters may be needed here *) =
-    Error([NotYetImplemented "Implement desugaring for typeschemes"])
+    Error([NotYetImplemented "Implement desugaring for schemes"])
   and helpTD (t : sourcespan tydecl) (* other parameters may be needed here *) =
     Error([NotYetImplemented "Implement desugaring for type declarations"])
+  in *)
   in
   match p with
-  | Program(tydecls, decls, body, _) ->
-      raise (NotYetImplemented "Implement desugaring for programs")
+  | Program(tydecls, decls, body, tag) -> Program(tydecls, List.map helpG decls, helpE body, tag)
 ;;
-
-
 
 let rec compile_fun (fun_name : string) args env : instruction list =
   raise (NotYetImplemented "Compile funs not yet implemented")
@@ -349,6 +398,7 @@ let compile_prog (anfed : tag aprogram) : string =
 let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
   |> (add_err_phase well_formed is_well_formed)
+  |> (add_phase desugared desugar) (* check if desugaring should happen before tagging or not.*)
   |> (add_phase tagged tag)
   |> (add_phase renamed rename_and_tag)
   |> (add_phase anfed (fun p -> atag (anf p)))
